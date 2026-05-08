@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="ChessBot.Api/ChessBot.Api.csproj" />
+  <Project Path="ChessBot.Core\ChessBot.Core.csproj" />
+</Solution>
