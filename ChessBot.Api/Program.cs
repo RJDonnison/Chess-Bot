@@ -16,7 +16,7 @@ public class Program
                     .AllowAnyHeader();
             });
         });
-        
+
         RegisterServices(builder.Services);
 
         var app = builder.Build();
