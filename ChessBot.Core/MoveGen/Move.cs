@@ -21,7 +21,8 @@ public struct Move
         Promotion = promotion;
     }
 
-    public override string ToString() {
+    public override string ToString()
+    {
         string from = SquareToString(From);
         string to = SquareToString(To);
 
@@ -30,7 +31,7 @@ public struct Move
 
         return $"{from}{to}";
     }
-    
+
     private static string SquareToString(int square)
     {
         int file = square % 8;

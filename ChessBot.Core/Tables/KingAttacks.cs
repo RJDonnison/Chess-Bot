@@ -4,7 +4,11 @@ namespace ChessBot.Core.Tables;
 
 public static class KingAttacks
 {
-    public static ulong[] InitTable()
+    public static ulong[] Table { get; private set; }
+
+    static KingAttacks() => Table = InitTable();
+
+    private static ulong[] InitTable()
     {
         ulong[] attackTable = new ulong[64];
 

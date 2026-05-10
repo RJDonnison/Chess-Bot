@@ -11,6 +11,9 @@ public class Board
     public ulong WhitePieces => Bitboards[(int)Color.White, (int)Piece.Pawn] | Bitboards[(int)Color.White, (int)Piece.Knight] | Bitboards[(int)Color.White, (int)Piece.Bishop] | Bitboards[(int)Color.White, (int)Piece.Rook] | Bitboards[(int)Color.White, (int)Piece.Queen] | Bitboards[(int)Color.White, (int)Piece.King];
     public ulong BlackPieces => Bitboards[(int)Color.Black, (int)Piece.Pawn] | Bitboards[(int)Color.Black, (int)Piece.Knight] | Bitboards[(int)Color.Black, (int)Piece.Bishop] | Bitboards[(int)Color.Black, (int)Piece.Rook] | Bitboards[(int)Color.Black, (int)Piece.Queen] | Bitboards[(int)Color.Black, (int)Piece.King];
 
+    public ulong FriendlyPieces => ToMove == Color.White ? WhitePieces : BlackPieces;
+    public ulong EnemyPieces => ToMove == Color.White ? BlackPieces : WhitePieces;
+
     public ulong Occupied => WhitePieces | BlackPieces;
     public ulong Empty => ~Occupied;
 

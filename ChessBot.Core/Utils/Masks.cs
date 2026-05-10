@@ -1,6 +1,6 @@
 namespace ChessBot.Core.Utils;
 
-public class Masks
+public static class Masks
 {
     public const ulong FileA = 0x0101010101010101UL;
     public const ulong FileB = 0x0202020202020202UL;
@@ -22,4 +22,36 @@ public class Masks
 
     public static readonly ulong[] FileMask = [FileA, FileB, FileC, FileD, FileE, FileF, FileG, FileH];
     public static readonly ulong[] RankMask = [Rank1, Rank2, Rank3, Rank4, Rank5, Rank6, Rank7, Rank8];
+
+    public static readonly ulong[,] Between = new ulong[64, 64];
+
+    static Masks()
+    {
+        InitBetween();
+    }
+
+    public static void InitBetween()
+    {
+        int[][] directions = { [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1] };
+
+        for (int sq = 0; sq < 64; sq++)
+        {
+            foreach (var dir in directions)
+            {
+                int f = sq % 8, r = sq / 8;
+                ulong ray = 0;
+
+                while (true)
+                {
+                    f += dir[0]; r += dir[1];
+                    if (f < 0 || f > 7 || r < 0 || r > 7) break;
+
+                    int target = r * 8 + f;
+
+                    Between[sq, target] = ray;
+                    ray |= 1UL << target;
+                }
+            }
+        }
+    }
 }
