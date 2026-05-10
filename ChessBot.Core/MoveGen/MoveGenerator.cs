@@ -18,9 +18,6 @@ public static class MoveGenerator
             ? ComputeCheckMask(board, kingSq)
             : 0xFFFFFFFFFFFFFFFFUL;
 
-        if (inCheck)
-            BitboardVisualizer.Bitboard = checkMask;
-
         List<Move> moves = new();
 
         GenerateKingMoves(board, moves, enemyAttacks);
