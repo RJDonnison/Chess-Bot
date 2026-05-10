@@ -171,16 +171,15 @@ public static class MoveGenerator
             if ((board.CastlingRights & 0b1000) != 0)
             {
                 bool empty = (board.Occupied & Masks.Between[4, 7]) == 0;
-                bool safe = (enemyAttacks & Masks.Between[4, 6]) == 0;
+                bool safe = (enemyAttacks & Masks.Between[3, 7] ) == 0;
                 if (empty && safe) moves.Add(new Move(4, 6));
-
             }
 
             // White queenside
             if ((board.CastlingRights & 0b0100) != 0)
             {
                 bool empty = (board.Occupied & Masks.Between[4, 0]) == 0;
-                bool safe = (enemyAttacks & Masks.Between[4, 2]) == 0;
+                bool safe = (enemyAttacks & Masks.Between[5, 1]) == 0;
                 if (empty && safe) moves.Add(new Move(4, 2));
             }
 
@@ -191,7 +190,7 @@ public static class MoveGenerator
         if ((board.CastlingRights & 0b0010) != 0)
         {
             bool empty = (board.Occupied & Masks.Between[60, 63]) == 0;
-            bool safe = (enemyAttacks & Masks.Between[60, 62]) == 0;
+            bool safe = (enemyAttacks & Masks.Between[59, 63]) == 0;
             if (empty && safe) moves.Add(new Move(60, 62));
         }
 
@@ -199,7 +198,7 @@ public static class MoveGenerator
         if ((board.CastlingRights & 0b0001) != 0)
         {
             bool empty = (board.Occupied & Masks.Between[60, 56]) == 0;
-            bool safe = (enemyAttacks & Masks.Between[60, 58]) == 0;
+            bool safe = (enemyAttacks & Masks.Between[61, 57]) == 0;
             if (empty && safe) moves.Add(new Move(60, 58));
         }
     }
@@ -220,15 +219,11 @@ public static class MoveGenerator
 
             ulong singlePush = isWhite ? (pawn << 8) & board.Empty : (pawn >> 8) & board.Empty;
             ulong doublePush = (pawn & startRank) != 0
-                ? isWhite ? ((singlePush & checkMask) << 8) & board.Empty : ((singlePush & checkMask) >> 8) & board.Empty
+                ? isWhite ? (singlePush << 8) & board.Empty : (singlePush >> 8) & board.Empty
                 : 0UL;
 
             ulong captures = PawnAttacks.Table[board.ToMove, from] & board.EnemyPieces;
             ulong targets = singlePush | doublePush | captures;
-            // EnPassant
-            if (board.EnPassantSquare != null)
-                targets |= captures & (1UL << (int)board.EnPassantSquare);
-
             targets &= checkMask & pinMasks[from];
 
             while (targets != 0)
@@ -246,6 +241,45 @@ public static class MoveGenerator
                 }
                 else
                     moves.Add(new Move(from, to));
+            }
+            
+            // EnPassant
+            if (board.EnPassantSquare == null)
+                continue;
+            
+            ulong epTargets = PawnAttacks.Table[board.ToMove, from] & (1UL << (int)board.EnPassantSquare);
+
+            while (epTargets != 0)
+            {
+                int to = BitOperations.TrailingZeroCount(epTargets);
+                epTargets &= epTargets - 1;
+
+                int capturedPawnSq = isWhite ? to - 8 : to + 8;
+
+                if (checkMask != 0xFFFFFFFFFFFFFFFFUL && (checkMask & (1UL << capturedPawnSq)) == 0)
+                    continue;
+
+                if ((pinMasks[from] & (1UL << to)) == 0)
+                    continue;
+
+                int kingSq = BitOperations.TrailingZeroCount(board.Bitboards[board.ToMove, (int)Piece.King]);
+
+                if (kingSq / 8 == from / 8)
+                {
+                    ulong simulatedOccupied = board.Occupied ^ (1UL << from) ^ (1UL << capturedPawnSq);
+                    ulong rookAttacks = MagicBitboards.GetRookMoves(kingSq, simulatedOccupied);
+                    ulong enemyHorizontalSliders = board.Bitboards[board.ToMove ^ 1, (int)Piece.Rook] |
+                                                   board.Bitboards[board.ToMove ^ 1, (int)Piece.Queen];
+                    
+                    if ((rookAttacks & enemyHorizontalSliders) != 0)
+                    {
+                        int sliderSq = BitOperations.TrailingZeroCount(rookAttacks & enemyHorizontalSliders);
+                        if (sliderSq / 8 == kingSq / 8)
+                            continue;
+                    }
+                }
+
+                moves.Add(new Move(from, to));
             }
         }
     }

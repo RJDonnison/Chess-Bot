@@ -37,10 +37,10 @@ public class PerftTests
         ["8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 5, 674_624L],
 
         // Position 4 - promotions
-        ["r3k2r/Pppp1ppp/1b6/8/8/1B6/pPPP1PPP/R3K2R w KQkq - 0 1", 1, 6L],
-        ["r3k2r/Pppp1ppp/1b6/8/8/1B6/pPPP1PPP/R3K2R w KQkq - 0 1", 2, 264L],
-        ["r3k2r/Pppp1ppp/1b6/8/8/1B6/pPPP1PPP/R3K2R w KQkq - 0 1", 3, 9_467L],
-        ["r3k2r/Pppp1ppp/1b6/8/8/1B6/pPPP1PPP/R3K2R w KQkq - 0 1", 4, 422_333L],
+        ["r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 1, 6L],
+        ["r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 2, 264L],
+        ["r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 3, 9_467L],
+        ["r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 4, 422_333L],
 
         // Position 5
         ["rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 1, 44L],
