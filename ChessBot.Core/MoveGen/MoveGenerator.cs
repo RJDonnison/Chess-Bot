@@ -163,15 +163,15 @@ public static class MoveGenerator
             int to = Bits.LSB(ref targets);
             moves.Add(new Move(from, to));
         }
-        
+
         // Castling
         if (board.ToMove == (int)Color.White)
         {
             // White kingside
             if ((board.CastlingRights & 0b1000) != 0)
             {
-                bool empty = (board.Occupied & Masks.Between[4,7]) == 0;
-                bool safe = (enemyAttacks & Masks.Between[4,6]) == 0;
+                bool empty = (board.Occupied & Masks.Between[4, 7]) == 0;
+                bool safe = (enemyAttacks & Masks.Between[4, 6]) == 0;
                 if (empty && safe) moves.Add(new Move(4, 6));
 
             }
@@ -179,28 +179,28 @@ public static class MoveGenerator
             // White queenside
             if ((board.CastlingRights & 0b0100) != 0)
             {
-                bool empty = (board.Occupied & Masks.Between[4,0]) == 0;
-                bool safe = (enemyAttacks & Masks.Between[4,2]) == 0;
-                if (empty && safe) moves.Add(new Move(4,2));
+                bool empty = (board.Occupied & Masks.Between[4, 0]) == 0;
+                bool safe = (enemyAttacks & Masks.Between[4, 2]) == 0;
+                if (empty && safe) moves.Add(new Move(4, 2));
             }
-            
+
             return;
         }
 
         // Black kingside
         if ((board.CastlingRights & 0b0010) != 0)
         {
-            bool empty = (board.Occupied & Masks.Between[60,63]) == 0;
-            bool safe = (enemyAttacks & Masks.Between[60,62]) == 0;
-            if (empty && safe) moves.Add(new Move(60,62)); 
+            bool empty = (board.Occupied & Masks.Between[60, 63]) == 0;
+            bool safe = (enemyAttacks & Masks.Between[60, 62]) == 0;
+            if (empty && safe) moves.Add(new Move(60, 62));
         }
 
         // Black queenside
         if ((board.CastlingRights & 0b0001) != 0)
         {
-            bool empty = (board.Occupied & Masks.Between[60,56]) == 0;
-            bool safe = (enemyAttacks & Masks.Between[60,58]) == 0;
-            if (empty && safe) moves.Add(new Move(60,58)); 
+            bool empty = (board.Occupied & Masks.Between[60, 56]) == 0;
+            bool safe = (enemyAttacks & Masks.Between[60, 58]) == 0;
+            if (empty && safe) moves.Add(new Move(60, 58));
         }
     }
 
@@ -228,7 +228,7 @@ public static class MoveGenerator
             // EnPassant
             if (board.EnPassantSquare != null)
                 targets |= captures & (1UL << (int)board.EnPassantSquare);
-            
+
             targets &= checkMask & pinMasks[from];
 
             while (targets != 0)

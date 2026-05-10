@@ -15,14 +15,14 @@ public static class BoardHelper
 
         return $"{fileChar}{rankChar}";
     }
-    
+
     public static int StringToSquare(string square)
     {
         int file = square[0] - 'a';
         int rank = square[1] - '1';
         return rank * 8 + file;
     }
-    
+
     public static char PieceToChar(Piece? piece) => piece switch
     {
         Piece.Pawn => 'p',
@@ -34,7 +34,7 @@ public static class BoardHelper
 
         _ => '.'
     };
-    
+
     public static string MoveToString(Move move)
     {
         string files = "abcdefgh";
