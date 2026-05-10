@@ -1,4 +1,4 @@
-namespace ChessBot.Core.Utils;
+namespace ChessBot.Core.Utilities;
 
 public static class Masks
 {

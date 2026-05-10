@@ -1,16 +1,16 @@
 using System.Numerics;
 using ChessBot.Core.Core;
 using ChessBot.Core.Tables;
-using ChessBot.Core.Utils;
+using ChessBot.Core.Utilities;
 
 namespace ChessBot.Core.MoveGen;
 
 public static class MoveGenerator
 {
-    public static List<Move> GenerateMove(Board board)
+    public static List<Move> GenerateMoves(Board board)
     {
-        ulong enemyAttacks = AttackMap(board, (Color)((int)board.ToMove ^ 1));
-        int kingSq = BitOperations.TrailingZeroCount(board.Bitboards[(int)board.ToMove, (int)Piece.King]);
+        ulong enemyAttacks = AttackMap(board, board.ToMove ^ 1);
+        int kingSq = BitOperations.TrailingZeroCount(board.Bitboards[board.ToMove, (int)Piece.King]);
         bool inCheck = (enemyAttacks & (1UL << kingSq)) != 0;
 
         ulong[] pinMasks = ComputePinMasks(board, kingSq);
@@ -24,12 +24,13 @@ public static class MoveGenerator
         List<Move> moves = new();
 
         GenerateKingMoves(board, moves, enemyAttacks);
+        // TODO: confirm this is double check
         if (checkMask == 0) return moves;
 
-        GenerateMoves(board, moves, Piece.Knight, checkMask, pinMasks);
-        GenerateMoves(board, moves, Piece.Rook, checkMask, pinMasks);
-        GenerateMoves(board, moves, Piece.Bishop, checkMask, pinMasks);
-        GenerateMoves(board, moves, Piece.Queen, checkMask, pinMasks);
+        GeneratePseudoLegalMoves(board, moves, Piece.Knight, checkMask, pinMasks);
+        GeneratePseudoLegalMoves(board, moves, Piece.Rook, checkMask, pinMasks);
+        GeneratePseudoLegalMoves(board, moves, Piece.Bishop, checkMask, pinMasks);
+        GeneratePseudoLegalMoves(board, moves, Piece.Queen, checkMask, pinMasks);
         GeneratePawnMoves(board, moves, checkMask, pinMasks);
 
         return moves;
@@ -40,16 +41,16 @@ public static class MoveGenerator
         ulong mask = 0UL;
         int checkerCount = 0;
 
-        ulong knightCheckers = KnightAttacks.Table[kingSq] & board.Bitboards[(int)board.ToMove ^ 1, (int)Piece.Knight];
+        ulong knightCheckers = KnightAttacks.Table[kingSq] & board.Bitboards[board.ToMove ^ 1, (int)Piece.Knight];
         if (knightCheckers != 0) { mask |= knightCheckers; checkerCount++; }
 
-        ulong pawnCheckers = PawnAttacks.Table[(int)board.ToMove, kingSq] &
-                             board.Bitboards[(int)board.ToMove ^ 1, (int)Piece.Pawn];
+        ulong pawnCheckers = PawnAttacks.Table[board.ToMove, kingSq] &
+                             board.Bitboards[board.ToMove ^ 1, (int)Piece.Pawn];
         if (pawnCheckers != 0) { mask |= pawnCheckers; checkerCount++; }
 
         ulong rookCheckers = MagicBitboards.GetRookMoves(kingSq, board.Occupied) &
-                             (board.Bitboards[(int)board.ToMove ^ 1, (int)Piece.Rook]
-                                | board.Bitboards[(int)board.ToMove ^ 1, (int)Piece.Queen]);
+                             (board.Bitboards[board.ToMove ^ 1, (int)Piece.Rook]
+                                | board.Bitboards[board.ToMove ^ 1, (int)Piece.Queen]);
         while (rookCheckers != 0)
         {
             int checkerSq = Bits.LSB(ref rookCheckers);
@@ -57,7 +58,7 @@ public static class MoveGenerator
             checkerCount++;
         }
 
-        ulong bishopCheckers = MagicBitboards.GetBishopMoves(kingSq, board.Occupied) & (board.Bitboards[(int)board.ToMove ^ 1, (int)Piece.Bishop] | board.Bitboards[(int)board.ToMove ^ 1, (int)Piece.Queen]);
+        ulong bishopCheckers = MagicBitboards.GetBishopMoves(kingSq, board.Occupied) & (board.Bitboards[board.ToMove ^ 1, (int)Piece.Bishop] | board.Bitboards[board.ToMove ^ 1, (int)Piece.Queen]);
         while (bishopCheckers != 0)
         {
             int checkerSq = Bits.LSB(ref bishopCheckers);
@@ -73,12 +74,10 @@ public static class MoveGenerator
         ulong[] pinMasks = new ulong[64];
         Array.Fill(pinMasks, 0xFFFFFFFFFFFFFFFFUL);
 
-        int them = (int)board.ToMove ^ 1;
-
         // Straight pins
         ulong rookPinners = XRayRookAttacks(kingSq, board.Occupied, board.FriendlyPieces)
-                            & (board.Bitboards[them, (int)Piece.Rook]
-                               | board.Bitboards[them, (int)Piece.Queen]);
+                            & (board.Bitboards[board.ToMove ^ 1, (int)Piece.Rook]
+                               | board.Bitboards[board.ToMove ^ 1, (int)Piece.Queen]);
 
         while (rookPinners != 0)
         {
@@ -92,8 +91,8 @@ public static class MoveGenerator
 
         // Diagonal pins
         ulong bishopPinners = XRayBishopAttacks(kingSq, board.Occupied, board.FriendlyPieces)
-                              & (board.Bitboards[them, (int)Piece.Bishop]
-                                 | board.Bitboards[them, (int)Piece.Queen]);
+                              & (board.Bitboards[board.ToMove ^ 1, (int)Piece.Bishop]
+                                 | board.Bitboards[board.ToMove ^ 1, (int)Piece.Queen]);
 
         while (bishopPinners != 0)
         {
@@ -111,20 +110,20 @@ public static class MoveGenerator
     private static ulong XRayRookAttacks(int sq, ulong occupied, ulong friendly)
     {
         ulong attacks = MagicBitboards.GetRookMoves(sq, occupied);
-        ulong blockers = attacks & friendly;
-        return MagicBitboards.GetRookMoves(sq, occupied ^ blockers) ^ attacks;
+        ulong occMasked = (occupied ^ (attacks & friendly)) & MagicBitboards.RookMasks[sq];
+        return MagicBitboards.GetRookMoves(sq, occMasked) ^ attacks;
     }
 
     private static ulong XRayBishopAttacks(int sq, ulong occupied, ulong friendly)
     {
         ulong attacks = MagicBitboards.GetBishopMoves(sq, occupied);
-        ulong blockers = attacks & friendly;
-        return MagicBitboards.GetBishopMoves(sq, occupied ^ blockers) ^ attacks;
+        ulong occMasked = (occupied ^ (attacks & friendly)) & MagicBitboards.BishopMasks[sq];
+        return MagicBitboards.GetBishopMoves(sq, occMasked) ^ attacks;
     }
 
-    private static void GenerateMoves(Board board, List<Move> moves, Piece piece, ulong checkMask, ulong[] pinMasks)
+    private static void GeneratePseudoLegalMoves(Board board, List<Move> moves, Piece piece, ulong checkMask, ulong[] pinMasks)
     {
-        ulong bitboard = board.Bitboards[(int)board.ToMove, (int)piece];
+        ulong bitboard = board.Bitboards[board.ToMove, (int)piece];
 
         while (bitboard != 0)
         {
@@ -154,7 +153,7 @@ public static class MoveGenerator
     private static void GenerateKingMoves(Board board, List<Move> moves, ulong enemyAttacks)
     {
         int from = BitOperations.TrailingZeroCount(
-            board.Bitboards[(int)board.ToMove, (int)Piece.King]);
+            board.Bitboards[board.ToMove, (int)Piece.King]);
         ulong targets = KingAttacks.Table[from]
                         & ~board.FriendlyPieces
                         & ~enemyAttacks;
@@ -168,11 +167,11 @@ public static class MoveGenerator
 
     private static void GeneratePawnMoves(Board board, List<Move> moves, ulong checkMask, ulong[] pinMasks)
     {
-        ulong bitboard = board.Bitboards[(int)board.ToMove, (int)Piece.Pawn];
+        ulong bitboard = board.Bitboards[board.ToMove, (int)Piece.Pawn];
 
-        bool isWhite = board.ToMove == Color.White;
+        bool isWhite = board.ToMove == (int)Color.White;
         ulong startRank = isWhite ? Masks.Rank2 : Masks.Rank7;
-        ulong promoRank = board.ToMove == Color.White ? Masks.Rank8 : Masks.Rank1;
+        ulong promoRank = isWhite ? Masks.Rank8 : Masks.Rank1;
 
         while (bitboard != 0)
         {
@@ -185,7 +184,7 @@ public static class MoveGenerator
                 ? isWhite ? ((singlePush & checkMask) << 8) & board.Empty : ((singlePush & checkMask) >> 8) & board.Empty
                 : 0UL;
 
-            ulong captures = PawnAttacks.Table[(int)board.ToMove, from] & board.EnemyPieces;
+            ulong captures = PawnAttacks.Table[board.ToMove, from] & board.EnemyPieces;
             // TODO: En passant
             ulong targets = singlePush | doublePush | captures;
             targets &= checkMask & pinMasks[from];
@@ -209,25 +208,24 @@ public static class MoveGenerator
         }
     }
 
-    private static ulong AttackMap(Board board, Color color)
+    private static ulong AttackMap(Board board, int color)
     {
-        int cIdx = (int)color;
         ulong attacks = 0;
 
         // None sliding 
-        ulong pawns = board.Bitboards[cIdx, (int)Piece.Pawn];
-        ulong knights = board.Bitboards[cIdx, (int)Piece.Knight];
-        ulong kings = board.Bitboards[cIdx, (int)Piece.King];
+        ulong pawns = board.Bitboards[color, (int)Piece.Pawn];
+        ulong knights = board.Bitboards[color, (int)Piece.Knight];
+        ulong kings = board.Bitboards[color, (int)Piece.King];
 
-        while (pawns != 0) { int sq = Bits.LSB(ref pawns); attacks |= PawnAttacks.Table[cIdx, sq]; }
+        while (pawns != 0) { int sq = Bits.LSB(ref pawns); attacks |= PawnAttacks.Table[color, sq]; }
         while (knights != 0) { int sq = Bits.LSB(ref knights); attacks |= KnightAttacks.Table[sq]; }
         while (kings != 0) { int sq = Bits.LSB(ref kings); attacks |= KingAttacks.Table[sq]; }
 
         // Sliding attacks
-        ulong defenderKing = board.Bitboards[cIdx ^ 1, (int)Piece.King];
+        ulong defenderKing = board.Bitboards[color ^ 1, (int)Piece.King];
         ulong occNoKing = board.Occupied & ~defenderKing;
-        ulong rooks = board.Bitboards[cIdx, (int)Piece.Rook] | board.Bitboards[cIdx, (int)Piece.Queen];
-        ulong bishops = board.Bitboards[cIdx, (int)Piece.Bishop] | board.Bitboards[cIdx, (int)Piece.Queen];
+        ulong rooks = board.Bitboards[color, (int)Piece.Rook] | board.Bitboards[color, (int)Piece.Queen];
+        ulong bishops = board.Bitboards[color, (int)Piece.Bishop] | board.Bitboards[color, (int)Piece.Queen];
 
         while (rooks != 0) { int sq = Bits.LSB(ref rooks); attacks |= MagicBitboards.GetRookMoves(sq, occNoKing); }
         while (bishops != 0) { int sq = Bits.LSB(ref bishops); attacks |= MagicBitboards.GetBishopMoves(sq, occNoKing); }

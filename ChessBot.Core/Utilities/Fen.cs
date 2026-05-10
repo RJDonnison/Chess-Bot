@@ -1,6 +1,6 @@
 using ChessBot.Core.Core;
 
-namespace ChessBot.Core.Utils;
+namespace ChessBot.Core.Utilities;
 
 public static class Fen
 {
@@ -8,7 +8,7 @@ public static class Fen
     {
         Board board = new();
         string[] fenSections = fen.Split(' ');
-        board.ToMove = fenSections[1] is "w" ? Color.White : Color.Black;
+        board.ToMove = fenSections[1] is "w" ? (int)Color.White : (int)Color.Black;
 
         string[] ranks = fenSections[0].Split('/');
 

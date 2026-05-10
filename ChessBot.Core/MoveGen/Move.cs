@@ -1,4 +1,5 @@
 using ChessBot.Core.Core;
+using ChessBot.Core.Utilities;
 
 namespace ChessBot.Core.MoveGen;
 
@@ -23,23 +24,14 @@ public struct Move
 
     public override string ToString()
     {
-        string from = SquareToString(From);
-        string to = SquareToString(To);
+        string from = BoardHelper.SquareToString(From);
+        string to = BoardHelper.SquareToString(To);
 
         if (Promotion != null)
-            return $"{from}{to}{PieceUtils.PieceToChar(Promotion)}";
+            return $"{from}{to}{BoardHelper.PieceToChar(Promotion)}";
 
         return $"{from}{to}";
     }
 
-    private static string SquareToString(int square)
-    {
-        int file = square % 8;
-        int rank = square / 8;
 
-        char fileChar = (char)('a' + file);
-        char rankChar = (char)('1' + rank);
-
-        return $"{fileChar}{rankChar}";
-    }
 }

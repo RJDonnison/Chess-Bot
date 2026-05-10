@@ -1,4 +1,4 @@
-using ChessBot.Core.Utils;
+using ChessBot.Core.Utilities;
 
 namespace ChessBot.Core.Tables;
 

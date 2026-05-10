@@ -1,7 +1,7 @@
 using ChessBot.Core.Core;
 using ChessBot.Core.MoveGen;
 using ChessBot.Core.Tables;
-using ChessBot.Core.Utils;
+using ChessBot.Core.Utilities;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ChessBot.Api.Controllers;
@@ -14,7 +14,7 @@ public class ChessBotController : ControllerBase
     public IActionResult BestMove(string fen)
     {
         Board board = Fen.GetBoard(fen);
-        List<Move> moves = MoveGenerator.GenerateMove(board);
+        List<Move> moves = MoveGenerator.GenerateMoves(board);
         Random rng = new Random();
 
         Move randomMove = moves[rng.Next(moves.Count - 1)];
@@ -23,7 +23,7 @@ public class ChessBotController : ControllerBase
             bestmove = randomMove.ToString()
         });
     }
-    
+
     [HttpGet("/debug")]
     public IActionResult Debug(string? sq, string fen)
     {
@@ -37,10 +37,10 @@ public class ChessBotController : ControllerBase
 
         Board board = Fen.GetBoard(fen);
         if (sq == null)
-            MoveGenerator.GenerateMove(board);
+            MoveGenerator.GenerateMoves(board);
         else
-            BitboardVisualizer.Bitboard = MagicBitboards.GetBishopMoves(sqInt, board.Occupied) & ~board.FriendlyPieces;
-        
+            BitboardVisualizer.Bitboard = MagicBitboards.GetRookMoves(sqInt, board.Occupied) & ~board.FriendlyPieces;
+
         return Ok(BitboardVisualizer.GetBitboard());
     }
 }

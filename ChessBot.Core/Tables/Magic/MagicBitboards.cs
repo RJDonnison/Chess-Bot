@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Numerics;
 
 namespace ChessBot.Core.Tables;
+
 using static PrecomputedMagics;
 
 public static class MagicBitboards
@@ -9,12 +10,15 @@ public static class MagicBitboards
     private static readonly ulong[][] RookTables;
     private static readonly ulong[][] BishopTables;
 
-    private static readonly ulong[] RookMasks;
-    private static readonly ulong[] BishopMasks;
+    public static readonly ulong[] RookMasks;
+    public static readonly ulong[] BishopMasks;
 
     public static ulong GetRookMoves(int sq, ulong occupied)
     {
         ulong key = ((occupied & RookMasks[sq]) * RookMagics[sq]) >> RookShifts[sq];
+        if (key >= (ulong)RookTables[sq].Length)
+            throw new Exception($"Rook magic overflow: sq={sq}, key={key}, tableSize={RookTables[sq].Length}");
+
         return RookTables[sq][key];
     }
 
@@ -70,7 +74,7 @@ public static class MagicBitboards
         for (int i = 1; f - i > 0 && r - i > 0; i++) mask |= 1UL << ((r - i) * 8 + (f - i));
         return mask;
     }
-    
+
     private static ulong[] CreateTable(int square, bool isRook, ulong magic, int leftShift)
     {
         int numBits = 64 - leftShift;
@@ -89,7 +93,7 @@ public static class MagicBitboards
 
         return table;
     }
-    
+
     public static ulong[] CreateAllBlockerBitboards(ulong movementMask)
     {
         List<int> moveSquareIndices = new();
@@ -115,7 +119,7 @@ public static class MagicBitboards
 
         return blockerBitboards;
     }
-    
+
     private static ulong LegalMoveBitboardFromBlockers(int square, ulong blockers, bool isRook)
     {
         ulong moves = 0;
