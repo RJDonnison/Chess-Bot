@@ -24,7 +24,7 @@ public static class MoveGenerator
         List<Move> moves = new();
 
         GenerateKingMoves(board, moves, enemyAttacks);
-        // TODO: confirm this is double check
+        // Return early as double checked so only king can move
         if (checkMask == 0) return moves;
 
         GeneratePseudoLegalMoves(board, moves, Piece.Knight, checkMask, pinMasks);
@@ -163,6 +163,45 @@ public static class MoveGenerator
             int to = Bits.LSB(ref targets);
             moves.Add(new Move(from, to));
         }
+        
+        // Castling
+        if (board.ToMove == (int)Color.White)
+        {
+            // White kingside
+            if ((board.CastlingRights & 0b1000) != 0)
+            {
+                bool empty = (board.Occupied & Masks.Between[4,7]) == 0;
+                bool safe = (enemyAttacks & Masks.Between[4,6]) == 0;
+                if (empty && safe) moves.Add(new Move(4, 6));
+
+            }
+
+            // White queenside
+            if ((board.CastlingRights & 0b0100) != 0)
+            {
+                bool empty = (board.Occupied & Masks.Between[4,0]) == 0;
+                bool safe = (enemyAttacks & Masks.Between[4,2]) == 0;
+                if (empty && safe) moves.Add(new Move(4,2));
+            }
+            
+            return;
+        }
+
+        // Black kingside
+        if ((board.CastlingRights & 0b0010) != 0)
+        {
+            bool empty = (board.Occupied & Masks.Between[60,63]) == 0;
+            bool safe = (enemyAttacks & Masks.Between[60,62]) == 0;
+            if (empty && safe) moves.Add(new Move(60,62)); 
+        }
+
+        // Black queenside
+        if ((board.CastlingRights & 0b0001) != 0)
+        {
+            bool empty = (board.Occupied & Masks.Between[60,56]) == 0;
+            bool safe = (enemyAttacks & Masks.Between[60,58]) == 0;
+            if (empty && safe) moves.Add(new Move(60,58)); 
+        }
     }
 
     private static void GeneratePawnMoves(Board board, List<Move> moves, ulong checkMask, ulong[] pinMasks)
@@ -185,8 +224,11 @@ public static class MoveGenerator
                 : 0UL;
 
             ulong captures = PawnAttacks.Table[board.ToMove, from] & board.EnemyPieces;
-            // TODO: En passant
             ulong targets = singlePush | doublePush | captures;
+            // EnPassant
+            if (board.EnPassantSquare != null)
+                targets |= captures & (1UL << (int)board.EnPassantSquare);
+            
             targets &= checkMask & pinMasks[from];
 
             while (targets != 0)

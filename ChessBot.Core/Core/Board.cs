@@ -34,16 +34,66 @@ public class Board
         Bitboards[ToMove, (int)piece] ^= fromBit;
         
         Piece? captured = GetPieceAt(move.To);
-        BoardState currentState = new BoardState(piece, captured, move.To, EnPassantSquare, CastlingRights);
-        _history.Push(currentState);
+
+        // En passant capture
+        if (piece == Piece.Pawn && move.To == EnPassantSquare)
+        {
+            int capturedPawnSq = move.To + (ToMove == (int)Color.White ? -8 : 8);
+            Bitboards[ToMove ^ 1, (int)Piece.Pawn] ^= 1UL << capturedPawnSq;
+            captured = Piece.Pawn;
+        }
         
-        // Remove captured piece from to square
-        if (captured != null)
+        // Remove captured normal piece from to square
+        if (captured != null && move.To != EnPassantSquare)
             Bitboards[ToMove ^ 1, (int)captured] ^= toBit;
 
+        BoardState currentState = new BoardState(piece, captured, EnPassantSquare, CastlingRights);
+        _history.Push(currentState);
+        
         // Add piece to new square
         Piece targetPiece = move.Promotion ?? piece;
         Bitboards[ToMove, (int)targetPiece] ^= toBit;
+
+        // Update en passant square
+        EnPassantSquare = piece == Piece.Pawn && Math.Abs(move.To - move.From) == 16
+            ? (move.From + move.To) / 2
+            : null;
+        
+        // Castling 
+        if (piece == Piece.King && Math.Abs(move.To - move.From) == 2)
+        {
+            (int rookFrom, int rookTo) = move.To switch
+            {
+                6 => (7, 5),   // White kingside
+                2 => (0, 3),   // White queenside
+                62 => (63, 61),  // Black kingside
+                58 => (56, 59),  // Black queenside
+                _ => throw new Exception("Invalid castle")
+            };
+            
+            Bitboards[ToMove, (int)Piece.Rook] ^= (1UL << rookFrom) | (1UL << rookTo);
+        }
+        
+        if (piece == Piece.King)
+            CastlingRights &= (byte)(ToMove == (int)Color.White ? 0b0011 : 0b1100);
+        
+        CastlingRights &= (byte)~(move.From switch
+        {
+            7  => 0b1000,
+            0  => 0b0100,
+            63 => 0b0010,
+            56 => 0b0001,
+            _  => 0
+        });
+
+        CastlingRights &= (byte)~(move.To switch
+        {
+            7  => 0b1000,
+            0  => 0b0100,
+            63 => 0b0010,
+            56 => 0b0001,
+            _  => 0
+        });
             
         // Update ToMove
         ToMove ^= 1;
@@ -59,16 +109,37 @@ public class Board
         EnPassantSquare = currentState.EnPassantSquare;
         CastlingRights = currentState.CastlingRights;
         
-        Piece piece = (Piece)GetPieceAt(move.To)!;
         ulong fromBit = 1UL << move.From;
         ulong toBit = 1UL << move.To; 
        
        // Remove piece from square
-       Bitboards[ToMove, (int)piece] ^= toBit; 
+       Piece pieceOnTarget = move.Promotion ?? currentState.Moved;
+       Bitboards[ToMove, (int)pieceOnTarget] ^= toBit; 
+       
+       // Castling
+       if (currentState.Moved == Piece.King && Math.Abs(move.To - move.From) == 2)
+       {
+           (int rookFrom, int rookTo) = move.To switch
+           {
+               6 => (7, 5),   // White kingside
+               2 => (0, 3),   // White queenside
+               62 => (63, 61),  // Black kingside
+               58 => (56, 59),  // Black queenside
+               _ => throw new Exception("Invalid castle")
+           };
+            
+           Bitboards[ToMove, (int)Piece.Rook] ^= (1UL << rookFrom) | (1UL << rookTo);
+       }
        
        // Added captured piece back to square
-       if (currentState.Captured != null) 
-           Bitboards[ToMove ^ 1, (int)currentState.Captured] ^= 1UL << currentState.CapturedSquare;
+       if (currentState.Moved == Piece.Pawn && move.To == currentState.EnPassantSquare)
+       {
+           int capturedPawnSq = move.To + (ToMove == (int)Color.White ? -8 : 8);
+           Bitboards[ToMove ^ 1, (int)Piece.Pawn] ^= 1UL << capturedPawnSq;
+       }  
+       
+       if (currentState.Captured != null && move.To != currentState.EnPassantSquare) 
+           Bitboards[ToMove ^ 1, (int)currentState.Captured] ^= 1UL << move.To;
        
        // Add piece to square
        Bitboards[ToMove, (int)currentState.Moved] ^= fromBit;
@@ -143,7 +214,6 @@ public class Board
 record BoardState(
     Piece Moved,
     Piece? Captured,
-    int CapturedSquare,
     int? EnPassantSquare,
     byte CastlingRights
 );

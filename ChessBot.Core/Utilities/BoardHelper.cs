@@ -5,8 +5,6 @@ namespace ChessBot.Core.Utilities;
 
 public static class BoardHelper
 {
-
-    
     public static string SquareToString(int square)
     {
         int file = square % 8;
@@ -16,6 +14,13 @@ public static class BoardHelper
         char rankChar = (char)('1' + rank);
 
         return $"{fileChar}{rankChar}";
+    }
+    
+    public static int StringToSquare(string square)
+    {
+        int file = square[0] - 'a';
+        int rank = square[1] - '1';
+        return rank * 8 + file;
     }
     
     public static char PieceToChar(Piece? piece) => piece switch

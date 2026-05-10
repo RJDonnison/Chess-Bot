@@ -10,6 +10,15 @@ public static class Fen
         string[] fenSections = fen.Split(' ');
         board.ToMove = fenSections[1] is "w" ? (int)Color.White : (int)Color.Black;
 
+        board.CastlingRights = 0;
+        if (fenSections[2].Contains('K')) board.CastlingRights |= 0b1000;
+        if (fenSections[2].Contains('Q')) board.CastlingRights |= 0b0100;
+        if (fenSections[2].Contains('k')) board.CastlingRights |= 0b0010;
+        if (fenSections[2].Contains('q')) board.CastlingRights |= 0b0001;
+
+        if (!fenSections[3].Contains('-'))
+            board.EnPassantSquare = BoardHelper.StringToSquare(fenSections[3]);
+
         string[] ranks = fenSections[0].Split('/');
 
         for (int rank = 0; rank < 8; rank++)
