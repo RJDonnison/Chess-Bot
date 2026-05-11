@@ -1,6 +1,6 @@
 using System.Numerics;
 using ChessBot.Core.Core;
-using ChessBot.Core.Tables;
+using ChessBot.Core.MoveGen.Magic;
 using ChessBot.Core.Utilities;
 
 namespace ChessBot.Core.MoveGen;

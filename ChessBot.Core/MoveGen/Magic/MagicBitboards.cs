@@ -1,7 +1,4 @@
-using System.Diagnostics;
-using System.Numerics;
-
-namespace ChessBot.Core.Tables;
+namespace ChessBot.Core.MoveGen.Magic;
 
 using static PrecomputedMagics;
 

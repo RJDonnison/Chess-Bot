@@ -1,6 +1,6 @@
 using ChessBot.Core.Utilities;
 
-namespace ChessBot.Core.Tables;
+namespace ChessBot.Core.MoveGen;
 
 public static class KingAttacks
 {

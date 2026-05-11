@@ -1,4 +1,4 @@
-namespace ChessBot.Core.Tables;
+namespace ChessBot.Core.MoveGen.Magic;
 
 public static class PrecomputedMagics
 {

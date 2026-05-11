@@ -1,6 +1,5 @@
 using ChessBot.Core.Core;
 using ChessBot.Core.MoveGen;
-using ChessBot.Core.Tables;
 using ChessBot.Core.Utilities;
 using Microsoft.AspNetCore.Mvc;
 
