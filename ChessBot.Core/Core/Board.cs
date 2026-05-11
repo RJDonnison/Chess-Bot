@@ -209,6 +209,8 @@ public class Board
 
         return sb.ToString();
     }
+
+    public bool IsInCheck() => MoveGenerator.IsInCheck(this);
 }
 
 record BoardState(

@@ -5,9 +5,17 @@ using ChessBot.Core.Utilities;
 
 namespace ChessBot.Core.MoveGen;
 
-public static class MoveGenerator
+// TODO: make not static
+public class MoveGenerator
 {
-    public static List<Move> GenerateMoves(Board board)
+    public static bool IsInCheck(Board board)
+    {
+        ulong enemyAttacks = AttackMap(board, board.ToMove ^ 1);
+        int kingSq = BitOperations.TrailingZeroCount(board.Bitboards[board.ToMove, (int)Piece.King]);
+        return (enemyAttacks & (1UL << kingSq)) != 0;
+    }
+
+    public List<Move> GenerateMoves(Board board)
     {
         ulong enemyAttacks = AttackMap(board, board.ToMove ^ 1);
         int kingSq = BitOperations.TrailingZeroCount(board.Bitboards[board.ToMove, (int)Piece.King]);
@@ -168,7 +176,7 @@ public static class MoveGenerator
             if ((board.CastlingRights & 0b1000) != 0)
             {
                 bool empty = (board.Occupied & Masks.Between[4, 7]) == 0;
-                bool safe = (enemyAttacks & Masks.Between[3, 7] ) == 0;
+                bool safe = (enemyAttacks & Masks.Between[3, 7]) == 0;
                 if (empty && safe) moves.Add(new Move(4, 6));
             }
 
@@ -239,11 +247,11 @@ public static class MoveGenerator
                 else
                     moves.Add(new Move(from, to));
             }
-            
+
             // EnPassant
             if (board.EnPassantSquare == null)
                 continue;
-            
+
             ulong epTargets = PawnAttacks.Table[board.ToMove, from] & (1UL << (int)board.EnPassantSquare);
 
             while (epTargets != 0)
@@ -267,7 +275,7 @@ public static class MoveGenerator
                     ulong rookAttacks = MagicBitboards.GetRookMoves(kingSq, simulatedOccupied);
                     ulong enemyHorizontalSliders = board.Bitboards[board.ToMove ^ 1, (int)Piece.Rook] |
                                                    board.Bitboards[board.ToMove ^ 1, (int)Piece.Queen];
-                    
+
                     if ((rookAttacks & enemyHorizontalSliders) != 0)
                     {
                         int sliderSq = BitOperations.TrailingZeroCount(rookAttacks & enemyHorizontalSliders);
