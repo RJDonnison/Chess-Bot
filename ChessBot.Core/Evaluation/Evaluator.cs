@@ -15,17 +15,18 @@ public class Evaluator
         0,    // King   = 5
     };
 
+    // TODO: handle draws
     public int Evaluate(Board board)
     {
         int score = 0;
 
         for (int piece = 0; piece < 6; piece++)
         {
-            ulong whiteBB = board.Bitboards[(int)Color.White, piece];
-            ulong blackBB = board.Bitboards[(int)Color.Black, piece];
+            ulong whiteBb = board.Bitboards[(int)Color.White, piece];
+            ulong blackBb = board.Bitboards[(int)Color.Black, piece];
 
-            score += BitOperations.PopCount(whiteBB) * PieceValues[piece];
-            score -= BitOperations.PopCount(blackBB) * PieceValues[piece];
+            score += BitOperations.PopCount(whiteBb) * PieceValues[piece];
+            score -= BitOperations.PopCount(blackBb) * PieceValues[piece];
         }
 
         return board.ToMove == (int)Color.White ? score : -score;

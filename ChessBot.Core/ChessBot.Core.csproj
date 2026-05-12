@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <Folder Include="Evaluation\" />
-    <Folder Include="Search\" />
   </ItemGroup>
 
 </Project>

@@ -15,7 +15,7 @@ public class Searcher
         Move bestMove = default;
         int max = int.MinValue;
 
-        List<Move> moves = _generator.GenerateMoves(board);
+        Span<Move> moves = _generator.GenerateMoves(board);
         foreach (var move in moves)
         {
             board.MakeMove(move);
@@ -37,17 +37,18 @@ public class Searcher
         if (depth == 0)
             return _evaluator.Evaluate(board);
 
-        List<Move> moves = _generator.GenerateMoves(board);
-        if (moves.Count == 0)
-            return board.IsInCheck() ? -30000 + (Depth - depth) : 0;
+        Span<Move> moves = stackalloc Move[MoveGenerator.MaxMoves];
+        int moveCount = _generator.GenerateMoves(board, ref moves);
+        if (moveCount == 0)
+            return _generator.IsInCheck() ? -30000 + (Depth - depth) : 0;
 
         int max = int.MinValue;
-        foreach (var move in moves)
+        for (int i = 0; i < moveCount; i++)
         {
-            board.MakeMove(move);
+            board.MakeMove(moves[i]);
             int score = -Negamax(board, depth - 1);
             max = int.Max(score, max);
-            board.UnmakeMove(move);
+            board.UnmakeMove(moves[i]);
         }
 
         return max;

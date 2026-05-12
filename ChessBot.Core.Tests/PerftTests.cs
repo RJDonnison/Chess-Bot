@@ -69,7 +69,7 @@ public class PerftTests
         if (depth == 0) return 1;
 
         long nodes = 0;
-        List<Move> moves = _moveGenerator.GenerateMoves(board);
+        Span<Move> moves = _moveGenerator.GenerateMoves(board);
 
         foreach (Move move in moves)
         {
@@ -86,7 +86,7 @@ public class PerftTests
     private void PerftDivide(Board board, int depth)
     {
         long total = 0;
-        List<Move> moves = _moveGenerator.GenerateMoves(board);
+        Span<Move> moves = _moveGenerator.GenerateMoves(board);
 
         foreach (Move move in moves)
         {
