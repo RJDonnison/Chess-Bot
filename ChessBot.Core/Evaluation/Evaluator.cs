@@ -8,8 +8,8 @@ public class Evaluator
     private static readonly int[] PieceValues =
     {
         100,  // Pawn   = 0
-        320,  // Knight = 1
-        330,  // Bishop = 2
+        300,  // Knight = 1
+        320,  // Bishop = 2
         500,  // Rook   = 3
         900,  // Queen  = 4
         0,    // King   = 5

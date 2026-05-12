@@ -8,8 +8,15 @@ namespace ChessBot.Core.Core;
 public class Board
 {
     public int ToMove { get; set; } = (int)Color.White;
-    public ulong[,] Bitboards { get; } = new ulong[2, 6];
+    public int? EnPassantSquare { get; set; }
+    public byte CastlingRights { get; set; }
 
+    public ulong ZobristKey;
+
+    public int HalfMoveClock = 0;
+    public bool Drawn => HalfMoveClock >= 100;
+
+    public ulong[,] Bitboards { get; } = new ulong[2, 6];
     public ulong WhitePieces => Bitboards[(int)Color.White, (int)Piece.Pawn] | Bitboards[(int)Color.White, (int)Piece.Knight] | Bitboards[(int)Color.White, (int)Piece.Bishop] | Bitboards[(int)Color.White, (int)Piece.Rook] | Bitboards[(int)Color.White, (int)Piece.Queen] | Bitboards[(int)Color.White, (int)Piece.King];
     public ulong BlackPieces => Bitboards[(int)Color.Black, (int)Piece.Pawn] | Bitboards[(int)Color.Black, (int)Piece.Knight] | Bitboards[(int)Color.Black, (int)Piece.Bishop] | Bitboards[(int)Color.Black, (int)Piece.Rook] | Bitboards[(int)Color.Black, (int)Piece.Queen] | Bitboards[(int)Color.Black, (int)Piece.King];
 
@@ -19,19 +26,19 @@ public class Board
     public ulong Occupied => WhitePieces | BlackPieces;
     public ulong Empty => ~Occupied;
 
-    public int? EnPassantSquare { get; set; }
-    public byte CastlingRights { get; set; }
-
     private Stack<BoardState> _history = new();
 
     public void MakeMove(Move move)
     {
+        HalfMoveClock += 1;
+
         Piece piece = (Piece)GetPieceAt(move.From)!;
         ulong fromBit = 1UL << move.From;
         ulong toBit = 1UL << move.To;
 
         // Remove piece from square
         Bitboards[ToMove, (int)piece] ^= fromBit;
+        ZobristKey ^= ZobristTables.Pieces[ToMove, (int)piece, move.From];
 
         Piece? captured = GetPieceAt(move.To);
 
@@ -40,12 +47,16 @@ public class Board
         {
             int capturedPawnSq = move.To + (ToMove == (int)Color.White ? -8 : 8);
             Bitboards[ToMove ^ 1, (int)Piece.Pawn] ^= 1UL << capturedPawnSq;
+            ZobristKey ^= ZobristTables.Pieces[ToMove ^ 1, (int)Piece.Pawn, capturedPawnSq];
             captured = Piece.Pawn;
         }
 
         // Remove captured normal piece from to square
         if (captured != null && move.To != EnPassantSquare)
+        {
             Bitboards[ToMove ^ 1, (int)captured] ^= toBit;
+            ZobristKey ^= ZobristTables.Pieces[ToMove ^ 1, (int)captured, move.To];
+        }
 
         BoardState currentState = new BoardState(piece, captured, EnPassantSquare, CastlingRights);
         _history.Push(currentState);
@@ -53,12 +64,16 @@ public class Board
         // Add piece to new square
         Piece targetPiece = move.Promotion ?? piece;
         Bitboards[ToMove, (int)targetPiece] ^= toBit;
+        ZobristKey ^= ZobristTables.Pieces[ToMove, (int)targetPiece, move.To];
 
         // Update en passant square
         EnPassantSquare = piece == Piece.Pawn && Math.Abs(move.To - move.From) == 16
             ? (move.From + move.To) / 2
             : null;
 
+        if (EnPassantSquare != null)
+            ZobristKey ^= ZobristTables.EnPassantFile[EnPassantSquare.Value % 8];
+        
         // Castling 
         if (piece == Piece.King && Math.Abs(move.To - move.From) == 2)
         {
@@ -72,6 +87,8 @@ public class Board
             };
 
             Bitboards[ToMove, (int)Piece.Rook] ^= (1UL << rookFrom) | (1UL << rookTo);
+            ZobristKey ^= ZobristTables.Pieces[ToMove, (int)Piece.Rook, rookFrom];
+            ZobristKey ^= ZobristTables.Pieces[ToMove, (int)Piece.Rook, rookTo];
         }
 
         if (piece == Piece.King)
@@ -94,27 +111,37 @@ public class Board
             56 => 0b0001,
             _ => 0
         });
+        
+        ZobristKey ^= ZobristTables.CastlingRights[CastlingRights];
 
         // Update ToMove
         ToMove ^= 1;
+        ZobristKey ^= ZobristTables.SideToMove;
     }
 
     public void UnmakeMove(Move move)
     {
+        HalfMoveClock -= 1;
         // Update ToMove
         ToMove ^= 1;
-
+        ZobristKey ^= ZobristTables.SideToMove;
+        
         // Restore state
         BoardState currentState = _history.Pop();
         EnPassantSquare = currentState.EnPassantSquare;
         CastlingRights = currentState.CastlingRights;
 
+        ZobristKey ^= ZobristTables.CastlingRights[CastlingRights];
+        if (EnPassantSquare != null)
+            ZobristKey ^= ZobristTables.EnPassantFile[EnPassantSquare.Value % 8];
+        
         ulong fromBit = 1UL << move.From;
         ulong toBit = 1UL << move.To;
 
         // Remove piece from square
         Piece pieceOnTarget = move.Promotion ?? currentState.Moved;
         Bitboards[ToMove, (int)pieceOnTarget] ^= toBit;
+        ZobristKey ^= ZobristTables.Pieces[ToMove, (int)pieceOnTarget, move.To];
 
         // Castling
         if (currentState.Moved == Piece.King && Math.Abs(move.To - move.From) == 2)
@@ -129,6 +156,8 @@ public class Board
             };
 
             Bitboards[ToMove, (int)Piece.Rook] ^= (1UL << rookFrom) | (1UL << rookTo);
+            ZobristKey ^= ZobristTables.Pieces[ToMove, (int)Piece.Rook, rookTo];
+            ZobristKey ^= ZobristTables.Pieces[ToMove, (int)Piece.Rook, rookFrom];
         }
 
         // Added captured piece back to square
@@ -136,13 +165,18 @@ public class Board
         {
             int capturedPawnSq = move.To + (ToMove == (int)Color.White ? -8 : 8);
             Bitboards[ToMove ^ 1, (int)Piece.Pawn] ^= 1UL << capturedPawnSq;
+            ZobristKey ^= ZobristTables.Pieces[ToMove ^ 1, (int)Piece.Pawn, capturedPawnSq];
         }
 
         if (currentState.Captured != null && move.To != currentState.EnPassantSquare)
+        {
             Bitboards[ToMove ^ 1, (int)currentState.Captured] ^= 1UL << move.To;
+            ZobristKey ^= ZobristTables.Pieces[ToMove ^ 1, (int)currentState.Captured, move.To];
+        }
 
         // Add piece to square
         Bitboards[ToMove, (int)currentState.Moved] ^= fromBit;
+        ZobristKey ^= ZobristTables.Pieces[ToMove, (int)currentState.Moved, move.From];
     }
 
     public Piece? GetPieceAt(int sq)

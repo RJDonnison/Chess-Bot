@@ -10,6 +10,8 @@ public static class Fen
         string[] fenSections = fen.Split(' ');
         board.ToMove = fenSections[1] is "w" ? (int)Color.White : (int)Color.Black;
 
+        board.HalfMoveClock = int.Parse(fenSections[4]);
+
         board.CastlingRights = 0;
         if (fenSections[2].Contains('K')) board.CastlingRights |= 0b1000;
         if (fenSections[2].Contains('Q')) board.CastlingRights |= 0b0100;
@@ -44,6 +46,7 @@ public static class Fen
             }
         }
 
+        board.ZobristKey = ZobristTables.CalculateZobristKey(board);
         return board;
     }
 

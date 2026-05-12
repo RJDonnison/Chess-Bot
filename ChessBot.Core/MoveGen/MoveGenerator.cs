@@ -8,7 +8,7 @@ namespace ChessBot.Core.MoveGen;
 public class MoveGenerator
 {
     public const int MaxMoves = 218;
-    
+
     private Board _board = null!;
     private bool _inCheck;
     private ulong _enemyAttacks;
@@ -19,14 +19,14 @@ public class MoveGenerator
 
     // Note, this will only return correct value after GenerateMoves() has been called in the current position
     public bool IsInCheck() => _inCheck;
-    
+
     public Span<Move> GenerateMoves(Board board)
     {
         Span<Move> moves = new Move[MaxMoves];
         GenerateMoves(board, ref moves);
         return moves;
     }
-    
+
     // Note, can use stackalloc Move[MaxMoves] and pass to moves for performance
     public int GenerateMoves(Board board, ref Span<Move> moves)
     {
