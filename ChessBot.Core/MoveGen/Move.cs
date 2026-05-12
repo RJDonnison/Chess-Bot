@@ -32,6 +32,4 @@ public struct Move
 
         return $"{from}{to}";
     }
-
-
 }

@@ -5,7 +5,7 @@ namespace ChessBot.Core.Evaluation;
 
 public class Evaluator
 {
-    private static readonly int[] PieceValues =
+    public static readonly int[] PieceValues =
     {
         100,  // Pawn   = 0
         300,  // Knight = 1
@@ -15,7 +15,6 @@ public class Evaluator
         0,    // King   = 5
     };
 
-    // TODO: handle draws
     public int Evaluate(Board board)
     {
         int score = 0;

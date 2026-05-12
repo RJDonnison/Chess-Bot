@@ -4,6 +4,8 @@ using ChessBot.Core.MoveGen;
 
 namespace ChessBot.Core.Search;
 
+using static MoveOrderer;
+
 public class Searcher
 {
     private const int Depth = 5;
@@ -22,8 +24,13 @@ public class Searcher
         int alpha = -Infinity;
 
         Span<Move> moves = _generator.GenerateMoves(board);
-        foreach (var move in moves)
+        Span<int> scores = stackalloc int[MoveGenerator.MaxMoves];
+        
+        OrderMoves(moves, scores, board);
+        for (int i = 0; i < moves.Length; i++)
         {
+            var move = PickMove(moves, scores, i);
+            
             board.MakeMove(move);
             _repetitionTable.Push(board.ZobristKey);
 
@@ -51,19 +58,23 @@ public class Searcher
             return _evaluator.Evaluate(board);
 
         Span<Move> moves = stackalloc Move[MoveGenerator.MaxMoves];
+        Span<int> scores = stackalloc int[MoveGenerator.MaxMoves];
+        
         int moveCount = _generator.GenerateMoves(board, ref moves);
         if (moveCount == 0)
             return _generator.IsInCheck() ? -MateScore + ply : 0;
-
+        
+        OrderMoves(moves, scores, board);
         for (int i = 0; i < moveCount; i++)
         {
-            board.MakeMove(moves[i]);
+            var move = PickMove(moves, scores, i);
+            board.MakeMove(move);
             _repetitionTable.Push(board.ZobristKey);
 
             int score = -Search(board, depth - 1, ply + 1, -beta, -alpha);
             
             _repetitionTable.TryPop();
-            board.UnmakeMove(moves[i]);
+            board.UnmakeMove(move);
             if (score >= beta)
                 return beta;
             alpha = int.Max(alpha, score);
