@@ -2,31 +2,31 @@ namespace ChessBot.Core.Search;
 
 public class RepetitionTable
 {
-    private readonly ulong[] hashes;
-    private int count = 0;
+    private readonly ulong[] _hashes;
+    private int _count = 0;
 
     public RepetitionTable()
     {
-        hashes = new ulong[256];
+        _hashes = new ulong[256];
     }
 
     public void Push(ulong hash)
     {
-        if (count < hashes.Length)
-            hashes[count] = hash;
-        count++;
+        if (_count < _hashes.Length)
+            _hashes[_count] = hash;
+        _count++;
     }
 
     public void TryPop()
     {
-        count = Math.Max(0, count - 1);
+        _count = Math.Max(0, _count - 1);
     }
 
     public bool Contains(ulong h)
     {
-        for (int i = 0; i < count - 1; i++)
+        for (int i = 0; i < _count - 1; i++)
         {
-            if (hashes[i] == h)
+            if (_hashes[i] == h)
                 return true;
         }
         return false;

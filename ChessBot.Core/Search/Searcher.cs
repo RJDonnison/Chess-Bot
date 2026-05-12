@@ -6,15 +6,20 @@ namespace ChessBot.Core.Search;
 
 public class Searcher
 {
-    private const int Depth = 4;
+    private const int Depth = 5;
+    private const int Infinity = 30000;
+    private const int MateScore = 29000;
+    
     private readonly Evaluator _evaluator = new();
     private readonly MoveGenerator _generator = new();
     private readonly RepetitionTable _repetitionTable = new();
 
-    public Move GetBestMove(Board board)
+    public Move GetBestMove(Board board) => Search(board, Depth);
+
+    private Move Search(Board board, int depth)
     {
         Move bestMove = default;
-        int max = int.MinValue;
+        int alpha = -Infinity;
 
         Span<Move> moves = _generator.GenerateMoves(board);
         foreach (var move in moves)
@@ -22,22 +27,22 @@ public class Searcher
             board.MakeMove(move);
             _repetitionTable.Push(board.ZobristKey);
 
-            int score = -Negamax(board, Depth - 1);
+            int score = -Search(board, depth - 1, 1, -Infinity, -alpha);
 
             _repetitionTable.TryPop();
             board.UnmakeMove(move);
 
-            if (score > max)
+            if (score > alpha)
             {
-                max = score;
+                alpha = score;
                 bestMove = move;
             }
-        }
-
+        } 
+        
         return bestMove;
     }
 
-    private int Negamax(Board board, int depth)
+    private int Search(Board board, int depth, int ply, int alpha, int beta)
     {
         if (board.Drawn || _repetitionTable.Contains(board.ZobristKey))
             return 0;
@@ -48,21 +53,22 @@ public class Searcher
         Span<Move> moves = stackalloc Move[MoveGenerator.MaxMoves];
         int moveCount = _generator.GenerateMoves(board, ref moves);
         if (moveCount == 0)
-            return _generator.IsInCheck() ? -30000 + (Depth - depth) : 0;
+            return _generator.IsInCheck() ? -MateScore + ply : 0;
 
-        int max = int.MinValue;
         for (int i = 0; i < moveCount; i++)
         {
             board.MakeMove(moves[i]);
             _repetitionTable.Push(board.ZobristKey);
 
-            int score = -Negamax(board, depth - 1);
-            max = int.Max(score, max);
-
+            int score = -Search(board, depth - 1, ply + 1, -beta, -alpha);
+            
             _repetitionTable.TryPop();
             board.UnmakeMove(moves[i]);
+            if (score >= beta)
+                return beta;
+            alpha = int.Max(alpha, score);
         }
 
-        return max;
+        return alpha;
     }
 }

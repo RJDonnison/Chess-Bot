@@ -91,6 +91,8 @@ public class Board
             ZobristKey ^= ZobristTables.Pieces[ToMove, (int)Piece.Rook, rookTo];
         }
 
+        ZobristKey ^= ZobristTables.CastlingRights[CastlingRights];
+        
         if (piece == Piece.King)
             CastlingRights &= (byte)(ToMove == (int)Color.White ? 0b0011 : 0b1100);
 
@@ -125,6 +127,8 @@ public class Board
         // Update ToMove
         ToMove ^= 1;
         ZobristKey ^= ZobristTables.SideToMove;
+        
+        ZobristKey ^= ZobristTables.CastlingRights[CastlingRights];
         
         // Restore state
         BoardState currentState = _history.Pop();

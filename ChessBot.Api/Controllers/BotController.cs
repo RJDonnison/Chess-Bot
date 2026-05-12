@@ -10,7 +10,6 @@ namespace ChessBot.Api.Controllers;
 [Route("/")]
 public class ChessBotController : ControllerBase
 {
-    private readonly MoveGenerator _moveGenerator = new();
     private readonly Searcher _searcher = new();
 
     [HttpGet("/bestmove")]
