@@ -73,7 +73,7 @@ public class Board
 
         if (EnPassantSquare != null)
             ZobristKey ^= ZobristTables.EnPassantFile[EnPassantSquare.Value % 8];
-        
+
         // Castling 
         if (piece == Piece.King && Math.Abs(move.To - move.From) == 2)
         {
@@ -113,7 +113,7 @@ public class Board
             56 => 0b0001,
             _ => 0
         });
-        
+
         ZobristKey ^= ZobristTables.CastlingRights[CastlingRights];
 
         // Update ToMove
@@ -127,7 +127,7 @@ public class Board
         // Update ToMove
         ToMove ^= 1;
         ZobristKey ^= ZobristTables.SideToMove;
-        
+
         ZobristKey ^= ZobristTables.CastlingRights[CastlingRights];
         
         // Restore state
@@ -138,7 +138,7 @@ public class Board
         ZobristKey ^= ZobristTables.CastlingRights[CastlingRights];
         if (EnPassantSquare != null)
             ZobristKey ^= ZobristTables.EnPassantFile[EnPassantSquare.Value % 8];
-        
+
         ulong fromBit = 1UL << move.From;
         ulong toBit = 1UL << move.To;
 
