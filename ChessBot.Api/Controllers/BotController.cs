@@ -1,3 +1,4 @@
+using ChessBot.Core;
 using ChessBot.Core.Core;
 using ChessBot.Core.MoveGen;
 using ChessBot.Core.Tables;
@@ -10,17 +11,14 @@ namespace ChessBot.Api.Controllers;
 [Route("/")]
 public class ChessBotController : ControllerBase
 {
+    private readonly Bot _bot = new();
+    
     [HttpGet("/bestmove")]
     public IActionResult BestMove(string fen)
     {
-        Board board = Fen.GetBoard(fen);
-        List<Move> moves = MoveGenerator.GenerateMoves(board);
-        Random rng = new Random();
-
-        Move randomMove = moves[rng.Next(moves.Count - 1)];
         return Ok(new
         {
-            bestmove = randomMove.ToString()
+            bestmove = _bot.GetBestMove(fen),
         });
     }
 
