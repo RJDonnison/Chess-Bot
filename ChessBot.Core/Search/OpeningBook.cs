@@ -6,13 +6,13 @@ namespace ChessBot.Core.Search;
 
 public static class OpeningBook
 {
-    private static readonly Dictionary<string, WeightedMove[]> movesDict;
-    private static readonly Random rand;
+    private static readonly Dictionary<string, WeightedMove[]> MovesDict;
+    private static readonly Random Rand;
 
     static OpeningBook()
     {
-        rand = new Random();
-        movesDict = new Dictionary<string, WeightedMove[]>();
+        Rand = new Random();
+        MovesDict = new Dictionary<string, WeightedMove[]>();
 
         var assembly = Assembly.GetExecutingAssembly();
         using var stream = assembly.GetManifestResourceStream("ChessBot.Core.Data.OpeningBook.txt");
@@ -28,7 +28,7 @@ public static class OpeningBook
             if (trimmed.StartsWith("pos "))
             {
                 if (currentPos != null && currentMoves.Count > 0)
-                    movesDict[currentPos] = currentMoves.ToArray();
+                    MovesDict[currentPos] = currentMoves.ToArray();
 
                 currentPos = trimmed.Substring(4); 
                 currentMoves = new List<WeightedMove>();
@@ -51,23 +51,23 @@ public static class OpeningBook
         }
 
         if (currentPos != null && currentMoves.Count > 0)
-            movesDict[currentPos] = currentMoves.ToArray(); 
+            MovesDict[currentPos] = currentMoves.ToArray(); 
     }
 
-    public static bool BookContains(string pos) => movesDict.ContainsKey(pos);
+    public static bool BookContains(string pos) => MovesDict.ContainsKey(pos);
 
     public static Move GetMove(string pos)
     {
         if (!BookContains(pos))
             throw new ArgumentException($"Invalid pos '{pos}'");
         
-        WeightedMove[] moves = movesDict[pos];
+        WeightedMove[] moves = MovesDict[pos];
 
         int totalWeight = 0;
         foreach (var m in moves)
             totalWeight += m.Weight;
 
-        int roll = rand.Next(totalWeight);
+        int roll = Rand.Next(totalWeight);
 
         int cumulative = 0;
         foreach (var m in moves)
