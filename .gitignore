@@ -39,6 +39,9 @@ ScaffoldingReadMe.txt
 # dotenv environment variables file
 .env
 
+# WASM build output directory
+wasm-dist/
+
 # Others
 ~$*
 *~
