@@ -8,8 +8,6 @@ using static MoveOrderer;
 
 public class Searcher
 {
-    
-
     private const int Depth = 5;
     private const int Infinity = 30000;
     private const int MateScore = 29000;
