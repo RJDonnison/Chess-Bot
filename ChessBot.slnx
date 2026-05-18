@@ -2,5 +2,4 @@
   <Project Path="ChessBot.Api/ChessBot.Api.csproj" />
   <Project Path="ChessBot.Core.Tests/ChessBot.Core.Tests.csproj" />
   <Project Path="ChessBot.Core\ChessBot.Core.csproj" />
-  <Project Path="ChessBot.Wasm\ChessBot.Wasm.csproj" />
 </Solution>
