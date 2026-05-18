@@ -17,8 +17,10 @@ public static class MoveOrderer
     };
 
     // Todo: work with new piece tables
-    public static void OrderMoves(Span<Move> moves, Span<int> scores, Board board)
+    public static void OrderMoves(Span<Move> moves, Board board)
     {
+        Span<int> scores = stackalloc int[moves.Length];
+        
         for (int i = 0; i < moves.Length; i++)
         {
             int score = 0;
@@ -33,19 +35,9 @@ public static class MoveOrderer
 
             scores[i] = score;
         }
-    }
-
-    // O(n) get move TODO: change to using quicksort
-    public static Move PickMove(Span<Move> moves, Span<int> scores, int start)
-    {
-        int best = start;
-        for (int i = start + 1; i < moves.Length; i++)
-            if (scores[i] > scores[best])
-                best = i;
-
-        (moves[start], moves[best]) = (moves[best], moves[start]);
-        (scores[start], scores[best]) = (scores[best], scores[start]);
-
-        return moves[start];
+        
+        scores.Sort(moves);
+        
+        moves.Reverse();
     }
 }

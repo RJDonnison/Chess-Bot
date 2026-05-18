@@ -10,12 +10,10 @@ public class ChessBotController : ControllerBase
     private readonly Bot _bot = new();
 
     [HttpGet("/bestmove")]
-    public IActionResult BestMove(string fen)
+    public async Task<IActionResult> BestMove(string fen)
     {
-        return Ok(new
-        {
-            bestmove = _bot.GetBestMove(fen),
-        });
+        var move = await Task.Run(() => _bot.GetBestMove(fen));
+        return Ok(new { bestmove = move });
     }
 
     [HttpGet("/debug")]
