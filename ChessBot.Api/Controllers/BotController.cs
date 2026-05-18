@@ -8,7 +8,7 @@ namespace ChessBot.Api.Controllers;
 public class ChessBotController : ControllerBase
 {
     private readonly Bot _bot = new();
-    
+
     [HttpGet("/bestmove")]
     public IActionResult BestMove(string fen)
     {

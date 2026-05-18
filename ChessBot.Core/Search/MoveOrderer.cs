@@ -15,7 +15,7 @@ public static class MoveOrderer
         900,  // Queen  = 4
         0,    // King   = 5
     };
-    
+
     // Todo: work with new piece tables
     public static void OrderMoves(Span<Move> moves, Span<int> scores, Board board)
     {
@@ -34,7 +34,7 @@ public static class MoveOrderer
             scores[i] = score;
         }
     }
-    
+
     // O(n) get move TODO: change to using quicksort
     public static Move PickMove(Span<Move> moves, Span<int> scores, int start)
     {

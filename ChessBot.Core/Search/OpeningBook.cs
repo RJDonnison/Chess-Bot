@@ -30,7 +30,7 @@ public static class OpeningBook
                 if (currentPos != null && currentMoves.Count > 0)
                     MovesDict[currentPos] = currentMoves.ToArray();
 
-                currentPos = trimmed.Substring(4); 
+                currentPos = trimmed.Substring(4);
                 currentMoves = new List<WeightedMove>();
             }
             else if (currentPos != null)
@@ -51,7 +51,7 @@ public static class OpeningBook
         }
 
         if (currentPos != null && currentMoves.Count > 0)
-            MovesDict[currentPos] = currentMoves.ToArray(); 
+            MovesDict[currentPos] = currentMoves.ToArray();
     }
 
     public static bool BookContains(string pos) => MovesDict.ContainsKey(pos);
@@ -60,7 +60,7 @@ public static class OpeningBook
     {
         if (!BookContains(pos))
             throw new ArgumentException($"Invalid pos '{pos}'");
-        
+
         WeightedMove[] moves = MovesDict[pos];
 
         int totalWeight = 0;
@@ -77,9 +77,9 @@ public static class OpeningBook
                 return m.Move;
         }
 
-        return moves[^1].Move;  
+        return moves[^1].Move;
     }
-    
+
     private struct WeightedMove
     {
         public int Weight;

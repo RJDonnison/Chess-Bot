@@ -7,8 +7,8 @@ namespace ChessBot.Core.Evaluation;
 public class Evaluator
 {
     // TODO: add a method to get any piece value 
-    
-    public int Evaluate(Board board)
+
+    public static int Evaluate(Board board)
     {
         int score = 0;
         score += EvaluateSide(board, Color.White, CountPieces(board, Color.Black));
@@ -30,7 +30,7 @@ public class Evaluator
             score += PawnPieceSquare.GetValue(lookupSquare, enemyPieces);
             pawns &= pawns - 1;
         }
-        
+
         ulong knights = board.Bitboards[(int)color, (int)Piece.Knight];
         while (knights != 0)
         {
@@ -39,7 +39,7 @@ public class Evaluator
             score += KnightPieceSquare.GetValue(lookupSquare, enemyPieces);
             knights &= knights - 1;
         }
-        
+
         ulong bishops = board.Bitboards[(int)color, (int)Piece.Bishop];
         while (bishops != 0)
         {
@@ -48,7 +48,7 @@ public class Evaluator
             score += BishopPieceSquare.GetValue(lookupSquare, enemyPieces);
             bishops &= bishops - 1;
         }
-        
+
         ulong rooks = board.Bitboards[(int)color, (int)Piece.Rook];
         while (rooks != 0)
         {
@@ -57,7 +57,7 @@ public class Evaluator
             score += RookPieceSquare.GetValue(lookupSquare, enemyPieces);
             rooks &= rooks - 1;
         }
-        
+
         ulong queens = board.Bitboards[(int)color, (int)Piece.Queen];
         while (queens != 0)
         {
@@ -73,7 +73,7 @@ public class Evaluator
     private static int CountPieces(Board board, Color color)
     {
         ulong occupancy = 0;
-        for (int piece = 0; piece < 5; piece++) 
+        for (int piece = 0; piece < 5; piece++)
             occupancy |= board.Bitboards[(int)color, piece];
         return BitOperations.PopCount(occupancy);
     }

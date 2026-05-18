@@ -16,6 +16,7 @@ public class MoveGenerator
     private ulong _checkMask;
     private int _kingSq;
     private int _currMoveIndex;
+    private bool _capturesOnly;
 
     // Note, this will only return correct value after GenerateMoves() has been called in the current position
     public bool IsInCheck() => _inCheck;
@@ -28,9 +29,10 @@ public class MoveGenerator
     }
 
     // Note, can use stackalloc Move[MaxMoves] and pass to moves for performance
-    public int GenerateMoves(Board board, ref Span<Move> moves)
+    public int GenerateMoves(Board board, ref Span<Move> moves, bool capturesOnly = false)
     {
         _board = board;
+        _capturesOnly = capturesOnly;
         Init();
 
         GenerateKingMoves(moves);
@@ -165,6 +167,7 @@ public class MoveGenerator
                 _ => 0UL
             };
             targets &= ~_board.FriendlyPieces & _checkMask & _pinMasks[from];
+            if (_capturesOnly) targets &= _board.EnemyPieces;
 
             while (targets != 0)
             {
@@ -183,6 +186,7 @@ public class MoveGenerator
         ulong targets = KingAttacks.Table[from]
                         & ~_board.FriendlyPieces
                         & ~_enemyAttacks;
+        if (_capturesOnly) targets &= _board.EnemyPieces;
 
         while (targets != 0)
         {
@@ -247,6 +251,8 @@ public class MoveGenerator
             ulong doublePush = (pawn & startRank) != 0
                 ? isWhite ? (singlePush << 8) & _board.Empty : (singlePush >> 8) & _board.Empty
                 : 0UL;
+
+            if (_capturesOnly) { singlePush = 0; doublePush = 0; }
 
             ulong captures = PawnAttacks.Table[_board.ToMove, from] & _board.EnemyPieces;
             ulong targets = singlePush | doublePush | captures;

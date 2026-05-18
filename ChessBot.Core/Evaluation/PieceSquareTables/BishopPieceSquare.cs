@@ -26,7 +26,8 @@ public class BishopPieceSquare
         -10,   5,  10,  10,  10,  10,   5, -10,  // rank 3
         -10,   0,   0,   0,   0,   0,   0, -10,  // rank 2
         -20, -10, -10, -10, -10, -10, -10, -20,  // rank 1
-    };    private static readonly int BaseValue = 320;
+    };
+    private static readonly int BaseValue = 320;
 
     public static int GetValue(int square, int enemyPieces)
     {
