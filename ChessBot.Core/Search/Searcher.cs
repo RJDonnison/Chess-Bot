@@ -59,7 +59,7 @@ public class Searcher
             return 0;
 
         if (depth == 0)
-            return SearchCapturesOnly(ply, alpha, beta);
+            return SearchCapturesOnly(alpha, beta);
 
         Span<Move> moves = stackalloc Move[MoveGenerator.MaxMoves];
 
@@ -67,7 +67,7 @@ public class Searcher
         if (moveCount == 0)
             return _generator.IsInCheck() ? -MateScore + ply : 0;
 
-        OrderMoves(moves, _board);
+        OrderMoves(moves[..moveCount], _board);
         for (int i = 0; i < moveCount; i++)
         {
             var move = moves[i];
@@ -86,7 +86,7 @@ public class Searcher
         return alpha;
     }
 
-    private int SearchCapturesOnly(int ply, int alpha, int beta)
+    private int SearchCapturesOnly(int alpha, int beta)
     {
         int evaluation = Evaluator.Evaluate(_board);
         if (evaluation >= beta)
@@ -94,20 +94,19 @@ public class Searcher
         alpha = int.Max(alpha, evaluation);
 
         Span<Move> moves = stackalloc Move[MoveGenerator.MaxMoves];
-        Span<int> scores = stackalloc int[MoveGenerator.MaxMoves];
 
         int moveCount = _generator.GenerateMoves(_board, ref moves, true);
         if (moveCount == 0)
-            return _generator.IsInCheck() ? -MateScore + ply : 0;
+            return Evaluator.Evaluate(_board);
 
-        OrderMoves(moves, _board);
+        OrderMoves(moves[..moveCount], _board);
         for (int i = 0; i < moveCount; i++)
         {
             var move = moves[i];
             _board.MakeMove(move);
             _repetitionTable.Push(_board.ZobristKey);
 
-            int score = -SearchCapturesOnly(ply + 1, -beta, -alpha);
+            int score = -SearchCapturesOnly( -beta, -alpha);
 
             _repetitionTable.TryPop();
             _board.UnmakeMove(move);

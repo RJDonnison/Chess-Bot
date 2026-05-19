@@ -16,7 +16,6 @@ public static class MoveOrderer
         0,    // King   = 5
     };
 
-    // Todo: work with new piece tables
     public static void OrderMoves(Span<Move> moves, Board board)
     {
         Span<int> scores = stackalloc int[moves.Length];
@@ -32,12 +31,17 @@ public static class MoveOrderer
 
             if (moves[i].Promotion != null)
                 score += PieceValues[(int)moves[i].Promotion!];
+            else 
+            {
+                // Quiet move: score based on PST positional gain
+                int fromValue = Evaluator.GetPositionalValue(movePiece, (Color)board.ToMove, moves[i].From);
+                int toValue = Evaluator.GetPositionalValue(movePiece, (Color)board.ToMove, moves[i].To);
+                score += toValue - fromValue;
+            }
 
-            scores[i] = score;
+            scores[i] = -score;
         }
-        
+         
         scores.Sort(moves);
-        
-        moves.Reverse();
     }
 }

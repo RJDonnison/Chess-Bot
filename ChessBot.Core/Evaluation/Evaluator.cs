@@ -1,82 +1,120 @@
 using System.Numerics;
 using ChessBot.Core.Core;
 using ChessBot.Core.Evaluation.PieceSquareTables;
+using ChessBot.Core.Search;
 
 namespace ChessBot.Core.Evaluation;
 
 public class Evaluator
 {
-    // TODO: add a method to get any piece value 
+    // Cache for PST getter methods to avoid reflection and enable dispatch
+    private static readonly PstGetter[] MgGetters = new PstGetter[]
+    {
+        PawnPieceSquare.GetMgValue,
+        KnightPieceSquare.GetMgValue,
+        BishopPieceSquare.GetMgValue,
+        RookPieceSquare.GetMgValue,
+        QueenPieceSquare.GetMgValue,
+        KingPieceSquare.GetMgValue,
+    };
+
+    private static readonly PstGetter[] EgGetters = new PstGetter[]
+    {
+        PawnPieceSquare.GetEgValue,
+        KnightPieceSquare.GetEgValue,
+        BishopPieceSquare.GetEgValue,
+        RookPieceSquare.GetEgValue,
+        QueenPieceSquare.GetEgValue,
+        KingPieceSquare.GetEgValue,
+    };
+
+    private delegate int PstGetter(int square);
 
     public static int Evaluate(Board board)
     {
-        int score = 0;
-        score += EvaluateSide(board, Color.White, CountPieces(board, Color.Black));
-        score -= EvaluateSide(board, Color.Black, CountPieces(board, Color.White));
+        int gamePhase = CalculateGamePhase(board);
+        
+        int mgScore = 0;
+        int egScore = 0;
 
-        return board.ToMove == (int)Color.White ? score : -score;
+        // Evaluate white pieces
+        mgScore += EvaluateSideMg(board, Color.White);
+        egScore += EvaluateSideEg(board, Color.White);
+        
+        // Evaluate black pieces (subtract from score)
+        mgScore -= EvaluateSideMg(board, Color.Black);
+        egScore -= EvaluateSideEg(board, Color.Black);
+
+        // Interpolate between middlegame and endgame scores
+        int interpolatedScore = (mgScore * (24 - gamePhase) + egScore * gamePhase) / 24;
+
+        return board.ToMove == (int)Color.White ? interpolatedScore : -interpolatedScore;
     }
 
-    private static int EvaluateSide(Board board, Color color, int enemyPieces)
+    private static int EvaluateSideMg(Board board, Color color)
     {
         int score = 0;
         bool isBlack = color == Color.Black;
 
-        ulong pawns = board.Bitboards[(int)color, (int)Piece.Pawn];
-        while (pawns != 0)
+        for (int piece = 0; piece <= (int)Piece.King; piece++)
         {
-            int square = BitOperations.TrailingZeroCount(pawns);
-            int lookupSquare = isBlack ? MirrorSquare(square) : square;
-            score += PawnPieceSquare.GetValue(lookupSquare, enemyPieces);
-            pawns &= pawns - 1;
-        }
-
-        ulong knights = board.Bitboards[(int)color, (int)Piece.Knight];
-        while (knights != 0)
-        {
-            int square = BitOperations.TrailingZeroCount(knights);
-            int lookupSquare = isBlack ? MirrorSquare(square) : square;
-            score += KnightPieceSquare.GetValue(lookupSquare, enemyPieces);
-            knights &= knights - 1;
-        }
-
-        ulong bishops = board.Bitboards[(int)color, (int)Piece.Bishop];
-        while (bishops != 0)
-        {
-            int square = BitOperations.TrailingZeroCount(bishops);
-            int lookupSquare = isBlack ? MirrorSquare(square) : square;
-            score += BishopPieceSquare.GetValue(lookupSquare, enemyPieces);
-            bishops &= bishops - 1;
-        }
-
-        ulong rooks = board.Bitboards[(int)color, (int)Piece.Rook];
-        while (rooks != 0)
-        {
-            int square = BitOperations.TrailingZeroCount(rooks);
-            int lookupSquare = isBlack ? MirrorSquare(square) : square;
-            score += RookPieceSquare.GetValue(lookupSquare, enemyPieces);
-            rooks &= rooks - 1;
-        }
-
-        ulong queens = board.Bitboards[(int)color, (int)Piece.Queen];
-        while (queens != 0)
-        {
-            int square = BitOperations.TrailingZeroCount(queens);
-            int lookupSquare = isBlack ? MirrorSquare(square) : square;
-            score += QueenPieceSquare.GetValue(lookupSquare, enemyPieces);
-            queens &= queens - 1;
+            ulong pieces = board.Bitboards[(int)color, piece];
+            while (pieces != 0)
+            {
+                int square = BitOperations.TrailingZeroCount(pieces);
+                int lookupSquare = isBlack ? MirrorSquare(square) : square;
+                score += MgGetters[piece](lookupSquare);
+                pieces &= pieces - 1;
+            }
         }
 
         return score;
     }
 
-    private static int CountPieces(Board board, Color color)
+    private static int EvaluateSideEg(Board board, Color color)
     {
-        ulong occupancy = 0;
-        for (int piece = 0; piece < 5; piece++)
-            occupancy |= board.Bitboards[(int)color, piece];
-        return BitOperations.PopCount(occupancy);
+        int score = 0;
+        bool isBlack = color == Color.Black;
+
+        for (int piece = 0; piece <= (int)Piece.King; piece++)
+        {
+            ulong pieces = board.Bitboards[(int)color, piece];
+            while (pieces != 0)
+            {
+                int square = BitOperations.TrailingZeroCount(pieces);
+                int lookupSquare = isBlack ? MirrorSquare(square) : square;
+                score += EgGetters[piece](lookupSquare);
+                pieces &= pieces - 1;
+            }
+        }
+
+        return score;
+    }
+
+    private static int CalculateGamePhase(Board board)
+    {
+        // 0 = opening, 24 = endgame
+        int totalPhase = 0;
+        
+        for (int color = 0; color < 2; color++)
+        {
+            totalPhase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Pawn]) * 1;      // Pawn
+            totalPhase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Knight]) * 3;    // Knight
+            totalPhase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Bishop]) * 3;    // Bishop
+            totalPhase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Rook]) * 5;      // Rook
+            totalPhase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Queen]) * 9;     // Queen
+        }
+
+        // Clamp to 0-24 range (24 * total_phase_pieces / total_opening_phase_pieces)
+        return totalPhase > 0 ? Math.Min(24, (24 * totalPhase) / 96) : 24;
     }
 
     private static int MirrorSquare(int square) => (7 - square / 8) * 8 + square % 8;
+
+    public static int GetPositionalValue(Piece piece, Color color, int square)
+    {
+        int lookupSquare = color == Color.Black ? MirrorSquare(square) : square;
+        // TODO: remove call to MoveOrderer
+        return MgGetters[(int)piece](lookupSquare) - MoveOrderer.PieceValues[(int)piece];
+    }
 }

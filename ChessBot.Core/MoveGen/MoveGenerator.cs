@@ -194,6 +194,8 @@ public class MoveGenerator
             moves[_currMoveIndex++] = new Move(from, to);
         }
 
+        if (_capturesOnly) return;
+
         // Castling
         if (_board.ToMove == (int)Color.White)
         {

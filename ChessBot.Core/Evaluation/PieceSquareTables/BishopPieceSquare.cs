@@ -29,12 +29,7 @@ public class BishopPieceSquare
     };
     private static readonly int BaseValue = 320;
 
-    public static int GetValue(int square, int enemyPieces)
-    {
-        var startValue = StartTable[square];
-        var endValue = EndTable[square];
-        var t = enemyPieces / 16;
+    public static int GetMgValue(int square) => StartTable[square] + BaseValue;
 
-        return (startValue + (endValue - startValue) * t) + BaseValue;
-    }
+    public static int GetEgValue(int square) => EndTable[square] + BaseValue;
 }
