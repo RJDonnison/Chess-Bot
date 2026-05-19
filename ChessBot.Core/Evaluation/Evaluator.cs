@@ -2,6 +2,7 @@ using System.Numerics;
 using ChessBot.Core.Core;
 using ChessBot.Core.Evaluation.PieceSquareTables;
 using ChessBot.Core.Search;
+using ChessBot.Core.Utilities;
 
 namespace ChessBot.Core.Evaluation;
 
@@ -47,6 +48,14 @@ public class Evaluator
 
         // Interpolate between middlegame and endgame scores
         int interpolatedScore = (mgScore * (24 - gamePhase) + egScore * gamePhase) / 24;
+
+        if (interpolatedScore > 300)
+        {
+            int friendlyKingSq = BitOperations.TrailingZeroCount(board.Bitboards[board.ToMove, (int)Piece.King]);
+            int enemyKingSq =  BitOperations.TrailingZeroCount(board.Bitboards[board.ToMove ^ 1, (int)Piece.King]);
+
+            interpolatedScore += ForceKingToCorner(friendlyKingSq, enemyKingSq, gamePhase);
+        }
 
         return board.ToMove == (int)Color.White ? interpolatedScore : -interpolatedScore;
     }
@@ -111,6 +120,29 @@ public class Evaluator
 
     private static int MirrorSquare(int square) => (7 - square / 8) * 8 + square % 8;
 
+    private static int ForceKingToCorner(int kingSq, int enemyKingSq, int gamePhase)
+    {
+        int eval = 0;
+
+        int enemyKingRank = BoardHelper.Rank(enemyKingSq);
+        int enemyKingFile = BoardHelper.File(enemyKingSq);
+
+        int enemyKingDstToCenterFile = int.Max(3 - enemyKingFile, enemyKingFile - 4);
+        int enemyKingDstToCenterRank = int.Max(3 - enemyKingRank, enemyKingRank - 4);
+        int enemyKingDstFromCenter = enemyKingDstToCenterRank + enemyKingDstToCenterFile;
+        eval += enemyKingDstFromCenter * 4;
+
+        int friendlyKingRank = BoardHelper.Rank(kingSq);
+        int friendlyKingFile = BoardHelper.File(kingSq);
+        
+        int dstBetweenKingFiles = int.Abs(friendlyKingFile - enemyKingFile);
+        int dstBetweenKingRanks = int.Abs(friendlyKingRank - enemyKingRank);
+        int dstBetweenKings = dstBetweenKingFiles + dstBetweenKingRanks;
+        eval += (14 - dstBetweenKings) * 2;
+
+        return eval * gamePhase / 24;
+    }
+    
     public static int GetPositionalValue(Piece piece, Color color, int square)
     {
         int lookupSquare = color == Color.Black ? MirrorSquare(square) : square;
