@@ -34,14 +34,14 @@ public class Evaluator
     public static int Evaluate(Board board)
     {
         int gamePhase = CalculateGamePhase(board);
-        
+
         int mgScore = 0;
         int egScore = 0;
 
         // Evaluate white pieces
         mgScore += EvaluateSideMg(board, Color.White);
         egScore += EvaluateSideEg(board, Color.White);
-        
+
         // Evaluate black pieces (subtract from score)
         mgScore -= EvaluateSideMg(board, Color.Black);
         egScore -= EvaluateSideEg(board, Color.Black);
@@ -52,7 +52,7 @@ public class Evaluator
         if (interpolatedScore > 300)
         {
             int friendlyKingSq = BitOperations.TrailingZeroCount(board.Bitboards[board.ToMove, (int)Piece.King]);
-            int enemyKingSq =  BitOperations.TrailingZeroCount(board.Bitboards[board.ToMove ^ 1, (int)Piece.King]);
+            int enemyKingSq = BitOperations.TrailingZeroCount(board.Bitboards[board.ToMove ^ 1, (int)Piece.King]);
 
             interpolatedScore += ForceKingToCorner(friendlyKingSq, enemyKingSq, gamePhase);
         }
@@ -104,7 +104,7 @@ public class Evaluator
     {
         // 0 = opening, 24 = endgame
         int totalPhase = 0;
-        
+
         for (int color = 0; color < 2; color++)
         {
             totalPhase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Pawn]) * 1;      // Pawn
@@ -134,7 +134,7 @@ public class Evaluator
 
         int friendlyKingRank = BoardHelper.Rank(kingSq);
         int friendlyKingFile = BoardHelper.File(kingSq);
-        
+
         int dstBetweenKingFiles = int.Abs(friendlyKingFile - enemyKingFile);
         int dstBetweenKingRanks = int.Abs(friendlyKingRank - enemyKingRank);
         int dstBetweenKings = dstBetweenKingFiles + dstBetweenKingRanks;
@@ -142,7 +142,7 @@ public class Evaluator
 
         return eval * gamePhase / 24;
     }
-    
+
     public static int GetPositionalValue(Piece piece, Color color, int square)
     {
         int lookupSquare = color == Color.Black ? MirrorSquare(square) : square;

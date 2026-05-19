@@ -19,7 +19,7 @@ public static class MoveOrderer
     public static void OrderMoves(Span<Move> moves, Board board)
     {
         Span<int> scores = stackalloc int[moves.Length];
-        
+
         for (int i = 0; i < moves.Length; i++)
         {
             int score = 0;
@@ -31,7 +31,7 @@ public static class MoveOrderer
 
             if (moves[i].Promotion != null)
                 score += PieceValues[(int)moves[i].Promotion!];
-            else 
+            else
             {
                 // Quiet move: score based on PST positional gain
                 int fromValue = Evaluator.GetPositionalValue(movePiece, (Color)board.ToMove, moves[i].From);
@@ -41,7 +41,7 @@ public static class MoveOrderer
 
             scores[i] = -score;
         }
-         
+
         scores.Sort(moves);
     }
 }

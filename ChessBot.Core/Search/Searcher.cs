@@ -106,7 +106,7 @@ public class Searcher
             _board.MakeMove(move);
             _repetitionTable.Push(_board.ZobristKey);
 
-            int score = -SearchCapturesOnly( -beta, -alpha);
+            int score = -SearchCapturesOnly(-beta, -alpha);
 
             _repetitionTable.TryPop();
             _board.UnmakeMove(move);
