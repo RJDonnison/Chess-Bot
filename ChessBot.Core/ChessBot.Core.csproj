@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Evaluation\" />
+    <EmbeddedResource Include="Data\OpeningBook.txt" />
   </ItemGroup>
-
 </Project>

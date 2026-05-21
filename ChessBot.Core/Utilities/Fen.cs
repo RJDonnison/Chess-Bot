@@ -46,6 +46,7 @@ public static class Fen
             }
         }
 
+        board.RebuildMailbox();
         board.ZobristKey = ZobristTables.CalculateZobristKey(board);
         return board;
     }

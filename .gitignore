@@ -39,6 +39,9 @@ ScaffoldingReadMe.txt
 # dotenv environment variables file
 .env
 
+# WASM build output directory
+wasm-dist/
+
 # Others
 ~$*
 *~
@@ -57,3 +60,5 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+.idea

@@ -1,7 +1,4 @@
-using ChessBot.Core.Core;
-using ChessBot.Core.MoveGen;
-using ChessBot.Core.Search;
-using ChessBot.Core.Utilities;
+using ChessBot.Core;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ChessBot.Api.Controllers;
@@ -10,19 +7,13 @@ namespace ChessBot.Api.Controllers;
 [Route("/")]
 public class ChessBotController : ControllerBase
 {
-    private readonly MoveGenerator _moveGenerator = new();
-    private readonly Searcher _searcher = new();
+    private readonly Bot _bot = new();
 
     [HttpGet("/bestmove")]
-    public IActionResult BestMove(string fen)
+    public async Task<IActionResult> BestMove(string fen)
     {
-        Board board = Fen.GetBoard(fen);
-
-        Move bestMove = _searcher.GetBestMove(board);
-        return Ok(new
-        {
-            bestmove = bestMove.ToString()
-        });
+        var move = await Task.Run(() => _bot.GetBestMove(fen));
+        return Ok(new { bestmove = move });
     }
 
     [HttpGet("/debug")]

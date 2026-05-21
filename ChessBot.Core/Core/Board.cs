@@ -17,22 +17,33 @@ public class Board
     public bool Drawn => HalfMoveClock >= 100;
 
     public ulong[,] Bitboards { get; } = new ulong[2, 6];
-    public ulong WhitePieces => Bitboards[(int)Color.White, (int)Piece.Pawn] | Bitboards[(int)Color.White, (int)Piece.Knight] | Bitboards[(int)Color.White, (int)Piece.Bishop] | Bitboards[(int)Color.White, (int)Piece.Rook] | Bitboards[(int)Color.White, (int)Piece.Queen] | Bitboards[(int)Color.White, (int)Piece.King];
-    public ulong BlackPieces => Bitboards[(int)Color.Black, (int)Piece.Pawn] | Bitboards[(int)Color.Black, (int)Piece.Knight] | Bitboards[(int)Color.Black, (int)Piece.Bishop] | Bitboards[(int)Color.Black, (int)Piece.Rook] | Bitboards[(int)Color.Black, (int)Piece.Queen] | Bitboards[(int)Color.Black, (int)Piece.King];
 
-    public ulong FriendlyPieces => ToMove == (int)Color.White ? WhitePieces : BlackPieces;
-    public ulong EnemyPieces => ToMove == (int)Color.White ? BlackPieces : WhitePieces;
+    // Mailbox for O(1) piece lookups
+    private readonly Piece?[] _squarePieces = new Piece?[64];
 
-    public ulong Occupied => WhitePieces | BlackPieces;
-    public ulong Empty => ~Occupied;
+    // Cached composite bitboards for O(1) access
+    private ulong _whitePieces;
+    private ulong _blackPieces;
+    private ulong _occupied;
+
+    public ulong WhitePieces => _whitePieces;
+    public ulong BlackPieces => _blackPieces;
+
+    public ulong FriendlyPieces => ToMove == (int)Color.White ? _whitePieces : _blackPieces;
+    public ulong EnemyPieces => ToMove == (int)Color.White ? _blackPieces : _whitePieces;
+
+    public ulong Occupied => _occupied;
+    public ulong Empty => ~_occupied;
 
     private Stack<BoardState> _history = new();
+
+    public Piece? GetPieceAt(int sq) => _squarePieces[sq];
 
     public void MakeMove(Move move)
     {
         HalfMoveClock += 1;
 
-        Piece piece = (Piece)GetPieceAt(move.From)!;
+        Piece piece = _squarePieces[move.From]!.Value;
         ulong fromBit = 1UL << move.From;
         ulong toBit = 1UL << move.To;
 
@@ -40,7 +51,16 @@ public class Board
         Bitboards[ToMove, (int)piece] ^= fromBit;
         ZobristKey ^= ZobristTables.Pieces[ToMove, (int)piece, move.From];
 
-        Piece? captured = GetPieceAt(move.To);
+        // Update Mailbox
+        _squarePieces[move.From] = null;
+
+        // Update composite bitboards
+        if (ToMove == (int)Color.White)
+            _whitePieces ^= fromBit;
+        else
+            _blackPieces ^= fromBit;
+
+        Piece? captured = _squarePieces[move.To];
 
         // En passant capture
         if (piece == Piece.Pawn && move.To == EnPassantSquare)
@@ -48,6 +68,16 @@ public class Board
             int capturedPawnSq = move.To + (ToMove == (int)Color.White ? -8 : 8);
             Bitboards[ToMove ^ 1, (int)Piece.Pawn] ^= 1UL << capturedPawnSq;
             ZobristKey ^= ZobristTables.Pieces[ToMove ^ 1, (int)Piece.Pawn, capturedPawnSq];
+
+            // Update Mailbox
+            _squarePieces[capturedPawnSq] = null;
+
+            // Update composite bitboards
+            if (ToMove == (int)Color.White)
+                _blackPieces ^= 1UL << capturedPawnSq;
+            else
+                _whitePieces ^= 1UL << capturedPawnSq;
+
             captured = Piece.Pawn;
         }
 
@@ -56,6 +86,12 @@ public class Board
         {
             Bitboards[ToMove ^ 1, (int)captured] ^= toBit;
             ZobristKey ^= ZobristTables.Pieces[ToMove ^ 1, (int)captured, move.To];
+
+            // Update composite bitboards
+            if (ToMove == (int)Color.White)
+                _blackPieces ^= toBit;
+            else
+                _whitePieces ^= toBit;
         }
 
         BoardState currentState = new BoardState(piece, captured, EnPassantSquare, CastlingRights);
@@ -66,6 +102,15 @@ public class Board
         Bitboards[ToMove, (int)targetPiece] ^= toBit;
         ZobristKey ^= ZobristTables.Pieces[ToMove, (int)targetPiece, move.To];
 
+        // Update Mailbox
+        _squarePieces[move.To] = targetPiece;
+
+        // Update composite bitboards
+        if (ToMove == (int)Color.White)
+            _whitePieces ^= toBit;
+        else
+            _blackPieces ^= toBit;
+
         // Update en passant square
         EnPassantSquare = piece == Piece.Pawn && Math.Abs(move.To - move.From) == 16
             ? (move.From + move.To) / 2
@@ -73,7 +118,7 @@ public class Board
 
         if (EnPassantSquare != null)
             ZobristKey ^= ZobristTables.EnPassantFile[EnPassantSquare.Value % 8];
-        
+
         // Castling 
         if (piece == Piece.King && Math.Abs(move.To - move.From) == 2)
         {
@@ -89,7 +134,23 @@ public class Board
             Bitboards[ToMove, (int)Piece.Rook] ^= (1UL << rookFrom) | (1UL << rookTo);
             ZobristKey ^= ZobristTables.Pieces[ToMove, (int)Piece.Rook, rookFrom];
             ZobristKey ^= ZobristTables.Pieces[ToMove, (int)Piece.Rook, rookTo];
+
+            // Update Mailbox
+            _squarePieces[rookFrom] = null;
+            _squarePieces[rookTo] = Piece.Rook;
+
+            // Update composite bitboards
+            if (ToMove == (int)Color.White)
+            {
+                _whitePieces ^= (1UL << rookFrom) | (1UL << rookTo);
+            }
+            else
+            {
+                _blackPieces ^= (1UL << rookFrom) | (1UL << rookTo);
+            }
         }
+
+        ZobristKey ^= ZobristTables.CastlingRights[CastlingRights];
 
         if (piece == Piece.King)
             CastlingRights &= (byte)(ToMove == (int)Color.White ? 0b0011 : 0b1100);
@@ -111,12 +172,15 @@ public class Board
             56 => 0b0001,
             _ => 0
         });
-        
+
         ZobristKey ^= ZobristTables.CastlingRights[CastlingRights];
 
         // Update ToMove
         ToMove ^= 1;
         ZobristKey ^= ZobristTables.SideToMove;
+
+        // Update _occupied
+        _occupied = _whitePieces | _blackPieces;
     }
 
     public void UnmakeMove(Move move)
@@ -125,7 +189,9 @@ public class Board
         // Update ToMove
         ToMove ^= 1;
         ZobristKey ^= ZobristTables.SideToMove;
-        
+
+        ZobristKey ^= ZobristTables.CastlingRights[CastlingRights];
+
         // Restore state
         BoardState currentState = _history.Pop();
         EnPassantSquare = currentState.EnPassantSquare;
@@ -134,7 +200,7 @@ public class Board
         ZobristKey ^= ZobristTables.CastlingRights[CastlingRights];
         if (EnPassantSquare != null)
             ZobristKey ^= ZobristTables.EnPassantFile[EnPassantSquare.Value % 8];
-        
+
         ulong fromBit = 1UL << move.From;
         ulong toBit = 1UL << move.To;
 
@@ -142,6 +208,13 @@ public class Board
         Piece pieceOnTarget = move.Promotion ?? currentState.Moved;
         Bitboards[ToMove, (int)pieceOnTarget] ^= toBit;
         ZobristKey ^= ZobristTables.Pieces[ToMove, (int)pieceOnTarget, move.To];
+
+        // Update Mailbox and composite bitboards
+        _squarePieces[move.To] = null;
+        if (ToMove == (int)Color.White)
+            _whitePieces ^= toBit;
+        else
+            _blackPieces ^= toBit;
 
         // Castling
         if (currentState.Moved == Piece.King && Math.Abs(move.To - move.From) == 2)
@@ -158,6 +231,18 @@ public class Board
             Bitboards[ToMove, (int)Piece.Rook] ^= (1UL << rookFrom) | (1UL << rookTo);
             ZobristKey ^= ZobristTables.Pieces[ToMove, (int)Piece.Rook, rookTo];
             ZobristKey ^= ZobristTables.Pieces[ToMove, (int)Piece.Rook, rookFrom];
+
+            // Update Mailbox and composite bitboards
+            _squarePieces[rookFrom] = Piece.Rook;
+            _squarePieces[rookTo] = null;
+            if (ToMove == (int)Color.White)
+            {
+                _whitePieces ^= (1UL << rookFrom) | (1UL << rookTo);
+            }
+            else
+            {
+                _blackPieces ^= (1UL << rookFrom) | (1UL << rookTo);
+            }
         }
 
         // Added captured piece back to square
@@ -166,40 +251,72 @@ public class Board
             int capturedPawnSq = move.To + (ToMove == (int)Color.White ? -8 : 8);
             Bitboards[ToMove ^ 1, (int)Piece.Pawn] ^= 1UL << capturedPawnSq;
             ZobristKey ^= ZobristTables.Pieces[ToMove ^ 1, (int)Piece.Pawn, capturedPawnSq];
+
+            // Update Mailbox and composite bitboards
+            _squarePieces[capturedPawnSq] = Piece.Pawn;
+            if (ToMove == (int)Color.White)
+                _blackPieces ^= 1UL << capturedPawnSq;
+            else
+                _whitePieces ^= 1UL << capturedPawnSq;
         }
 
         if (currentState.Captured != null && move.To != currentState.EnPassantSquare)
         {
             Bitboards[ToMove ^ 1, (int)currentState.Captured] ^= 1UL << move.To;
             ZobristKey ^= ZobristTables.Pieces[ToMove ^ 1, (int)currentState.Captured, move.To];
+
+            // Update Mailbox and composite bitboards
+            _squarePieces[move.To] = currentState.Captured;
+            if (ToMove == (int)Color.White)
+                _blackPieces ^= toBit;
+            else
+                _whitePieces ^= toBit;
         }
 
         // Add piece to square
         Bitboards[ToMove, (int)currentState.Moved] ^= fromBit;
         ZobristKey ^= ZobristTables.Pieces[ToMove, (int)currentState.Moved, move.From];
+
+        // Update Mailbox and composite bitboards
+        _squarePieces[move.From] = currentState.Moved;
+        if (ToMove == (int)Color.White)
+            _whitePieces ^= fromBit;
+        else
+            _blackPieces ^= fromBit;
+
+        // Update _occupied
+        _occupied = _whitePieces | _blackPieces;
     }
 
-    public Piece? GetPieceAt(int sq)
+    public void RebuildMailbox()
     {
-        if (((1UL << sq) & (Bitboards[(int)Color.White, (int)Piece.Pawn] | Bitboards[(int)Color.Black, (int)Piece.Pawn])) != 0)
-            return Piece.Pawn;
+        Array.Fill(_squarePieces, null);
 
-        if (((1UL << sq) & (Bitboards[(int)Color.White, (int)Piece.Rook] | Bitboards[(int)Color.Black, (int)Piece.Rook])) != 0)
-            return Piece.Rook;
+        _whitePieces = 0;
+        _blackPieces = 0;
 
-        if (((1UL << sq) & (Bitboards[(int)Color.White, (int)Piece.Bishop] | Bitboards[(int)Color.Black, (int)Piece.Bishop])) != 0)
-            return Piece.Bishop;
+        for (int color = 0; color < 2; color++)
+        {
+            for (int piece = 0; piece < 6; piece++)
+            {
+                ulong bb = Bitboards[color, piece];
 
-        if (((1UL << sq) & (Bitboards[(int)Color.White, (int)Piece.Knight] | Bitboards[(int)Color.Black, (int)Piece.Knight])) != 0)
-            return Piece.Knight;
+                while (bb != 0)
+                {
+                    int sq = BitOperations.TrailingZeroCount(bb);
+                    _squarePieces[sq] = (Piece)piece;
 
-        if (((1UL << sq) & (Bitboards[(int)Color.White, (int)Piece.King] | Bitboards[(int)Color.Black, (int)Piece.King])) != 0)
-            return Piece.King;
+                    if (color == (int)Color.White)
+                        _whitePieces |= 1UL << sq;
+                    else
+                        _blackPieces |= 1UL << sq;
 
-        if (((1UL << sq) & (Bitboards[(int)Color.White, (int)Piece.Queen] | Bitboards[(int)Color.Black, (int)Piece.Queen])) != 0)
-            return Piece.Queen;
+                    bb &= bb - 1;
+                }
+            }
+        }
 
-        return null;
+        _occupied = _whitePieces | _blackPieces;
     }
 
     public override string ToString()

@@ -42,4 +42,8 @@ public static class BoardHelper
         string to = $"{files[move.To % 8]}{move.To / 8 + 1}";
         return $"{from}{to}";
     }
+
+    public static int Rank(int sq) => sq / 8;
+
+    public static int File(int sq) => sq % 8;
 }
