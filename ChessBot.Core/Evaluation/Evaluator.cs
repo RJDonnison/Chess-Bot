@@ -49,11 +49,11 @@ public class Evaluator
         // Interpolate between middlegame and endgame scores
         int interpolatedScore = (mgScore * (24 - gamePhase) + egScore * gamePhase) / 24;
 
-        if (interpolatedScore > 300)
+        if (gamePhase > 18 && interpolatedScore > 300)
         {
             int friendlyKingSq = BitOperations.TrailingZeroCount(board.Bitboards[board.ToMove, (int)Piece.King]);
             int enemyKingSq = BitOperations.TrailingZeroCount(board.Bitboards[board.ToMove ^ 1, (int)Piece.King]);
-
+        
             interpolatedScore += ForceKingToCorner(friendlyKingSq, enemyKingSq, gamePhase);
         }
 
@@ -103,19 +103,17 @@ public class Evaluator
     private static int CalculateGamePhase(Board board)
     {
         // 0 = opening, 24 = endgame
-        int totalPhase = 0;
+        int phase = 0;
 
         for (int color = 0; color < 2; color++)
         {
-            totalPhase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Pawn]) * 1;      // Pawn
-            totalPhase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Knight]) * 3;    // Knight
-            totalPhase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Bishop]) * 3;    // Bishop
-            totalPhase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Rook]) * 5;      // Rook
-            totalPhase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Queen]) * 9;     // Queen
+            phase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Knight]);
+            phase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Bishop]);
+            phase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Rook]) * 2;
+            phase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Queen]) * 4;
         }
 
-        // Clamp to 0-24 range (24 * total_phase_pieces / total_opening_phase_pieces)
-        return totalPhase > 0 ? Math.Min(24, (24 * totalPhase) / 96) : 24;
+        return Math.Clamp(phase, 0, 24);
     }
 
     private static int MirrorSquare(int square) => (7 - square / 8) * 8 + square % 8;

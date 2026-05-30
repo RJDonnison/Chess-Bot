@@ -9,6 +9,7 @@ public class TranspositionTable
     public const int Exact = 0;
     public const int Lowerbound = 1;
     public const int Upperbound = 2;
+    private const int MateScoreThreshold = 28000;
     
     private readonly Entry[] _entries;
     private readonly ulong _mask;
@@ -24,8 +25,9 @@ public class TranspositionTable
     
     private int Index(ulong key) => (int)(key & _mask);
     
-    public void Store(ulong key, int score, int depth, Move bestMove, int flag)
+    public void Store(ulong key, int score, int depth, int ply, Move bestMove, int flag)
     {
+        score = NormalizeMateScoreForStorage(score, ply);
         _entries[Index(key)] = new Entry(key, score, depth, bestMove, flag);
     }
 
@@ -35,18 +37,20 @@ public class TranspositionTable
         return entry.Key == key ? entry.BestMove : default;
     }
     
-    public int? TryGetScore(ulong key, int depth, int alpha, int beta)
+    public int? TryGetScore(ulong key, int depth, int ply, int alpha, int beta)
     {
         Entry entry = _entries[Index(key)];
 
         if (entry.Key != key) return null; // Collision
         if (entry.Depth < depth) return null; // Too shallow
 
-        if (entry.Flag == Exact) return entry.Score;
-        if (entry.Flag == Lowerbound) alpha = Math.Max(alpha, entry.Score);
-        if (entry.Flag == Upperbound) beta = Math.Min(beta,  entry.Score);
+        int score = NormalizeMateScoreForRetrieval(entry.Score, ply);
 
-        if (alpha >= beta) return entry.Score;
+        if (entry.Flag == Exact) return score;
+        if (entry.Flag == Lowerbound) alpha = Math.Max(alpha, score);
+        if (entry.Flag == Upperbound) beta = Math.Min(beta, score);
+
+        if (alpha >= beta) return score;
 
         return null; // Bounds didn't cause a cutoff
     }
@@ -67,5 +71,27 @@ public class TranspositionTable
             BestMove = bestMove;
             Flag = flag;
         }
+    }
+
+    private static int NormalizeMateScoreForStorage(int score, int ply)
+    {
+        if (score >= MateScoreThreshold)
+            return score + ply;
+
+        if (score <= -MateScoreThreshold)
+            return score - ply;
+
+        return score;
+    }
+
+    private static int NormalizeMateScoreForRetrieval(int score, int ply)
+    {
+        if (score >= MateScoreThreshold)
+            return score - ply;
+
+        if (score <= -MateScoreThreshold)
+            return score + ply;
+
+        return score;
     }
 }

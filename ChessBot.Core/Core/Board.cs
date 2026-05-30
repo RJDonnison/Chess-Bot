@@ -112,6 +112,9 @@ public class Board
             _blackPieces ^= toBit;
 
         // Update en passant square
+        if (EnPassantSquare != null)
+            ZobristKey ^= ZobristTables.EnPassantFile[EnPassantSquare.Value % 8];
+
         EnPassantSquare = piece == Piece.Pawn && Math.Abs(move.To - move.From) == 16
             ? (move.From + move.To) / 2
             : null;
@@ -191,6 +194,8 @@ public class Board
         ZobristKey ^= ZobristTables.SideToMove;
 
         ZobristKey ^= ZobristTables.CastlingRights[CastlingRights];
+        if (EnPassantSquare != null)
+            ZobristKey ^= ZobristTables.EnPassantFile[EnPassantSquare.Value % 8];
 
         // Restore state
         BoardState currentState = _history.Pop();
