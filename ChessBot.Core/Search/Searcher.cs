@@ -8,7 +8,7 @@ using static MoveOrderer;
 
 public class Searcher
 {
-    private const int Depth = 5;
+    private const int Depth = 7;
     private const int Infinity = 30000;
     private const int MateScore = 29000;
 
@@ -57,10 +57,9 @@ public class Searcher
         if (depth == 0)
             return SearchCapturesOnly(alpha, beta);
         
-        TranspositionTable.Entry entry = _tt.TryGet(_board.ZobristKey);
-        if (entry.Depth >= depth)
-            return entry.Score;
-        
+        int? ttScore = _tt.TryGetScore(_board.ZobristKey, depth, alpha, beta);
+        if (ttScore.HasValue)
+            return ttScore.Value;
 
         Span<Move> moves = stackalloc Move[MoveGenerator.MaxMoves];
 
@@ -68,9 +67,10 @@ public class Searcher
         if (moveCount == 0)
             return _generator.IsInCheck() ? -MateScore + ply : 0;
 
-        Move ttMove = entry.Depth >= 0 ? entry.BestMove : default;
+        Move ttMove = _tt.GetBestMove(_board.ZobristKey);
         OrderMoves(moves[..moveCount], _board, ttMove);
         
+        int originalAlpha = alpha;
         Move bestMove = default;
         for (int i = 0; i < moveCount; i++)
         {
@@ -84,7 +84,7 @@ public class Searcher
             _board.UnmakeMove(move);
             if (score >= beta)
             {
-                _tt.Store(_board.ZobristKey, score, depth, move); 
+                _tt.Store(_board.ZobristKey, score, depth, move, TranspositionTable.Lowerbound); 
                 return beta;
             }
 
@@ -95,7 +95,8 @@ public class Searcher
             }
         }
         
-        _tt.Store(_board.ZobristKey, alpha, depth, bestMove);
+        int flag = alpha > originalAlpha ? TranspositionTable.Exact : TranspositionTable.Upperbound;
+        _tt.Store(_board.ZobristKey, alpha, depth, bestMove, flag);
         return alpha;
     }
 
