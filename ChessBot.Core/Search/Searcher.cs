@@ -60,6 +60,7 @@ public class Searcher
         TranspositionTable.Entry entry = _tt.TryGet(_board.ZobristKey);
         if (entry.Depth >= depth)
             return entry.Score;
+        
 
         Span<Move> moves = stackalloc Move[MoveGenerator.MaxMoves];
 
@@ -67,7 +68,10 @@ public class Searcher
         if (moveCount == 0)
             return _generator.IsInCheck() ? -MateScore + ply : 0;
 
-        OrderMoves(moves[..moveCount], _board);
+        Move ttMove = entry.Depth >= 0 ? entry.BestMove : default;
+        OrderMoves(moves[..moveCount], _board, ttMove);
+        
+        Move bestMove = default;
         for (int i = 0; i < moveCount; i++)
         {
             var move = moves[i];
@@ -80,14 +84,18 @@ public class Searcher
             _board.UnmakeMove(move);
             if (score >= beta)
             {
-                _tt.Store(_board.ZobristKey, score, depth); 
+                _tt.Store(_board.ZobristKey, score, depth, move); 
                 return beta;
             }
-            alpha = int.Max(alpha, score);
+
+            if (score > alpha)
+            {
+                alpha = score;
+                bestMove = move;
+            }
         }
         
-        _tt.Store(_board.ZobristKey, alpha, depth);
-
+        _tt.Store(_board.ZobristKey, alpha, depth, bestMove);
         return alpha;
     }
 

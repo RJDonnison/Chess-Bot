@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using ChessBot.Core.MoveGen;
 
 namespace ChessBot.Core.Search;
 
@@ -18,11 +19,11 @@ public class TranspositionTable
     
     private int Index(ulong key) => (int)(key % _count);
     
-    public void Store(ulong key, int score, int depth)
+    public void Store(ulong key, int score, int depth,  Move bestMove)
     {
         int index = Index(key);
         
-       _entries[index] =  new Entry(score, depth);
+       _entries[index] =  new Entry(score, depth, bestMove);
     }
 
     public Entry TryGet(ulong key) => _entries[Index(key)];
@@ -31,16 +32,13 @@ public class TranspositionTable
     {
         public readonly int Score;
         public readonly int Depth;
+        public readonly Move BestMove;
 
-        public Entry(int score, int depth)
+        public Entry(int score, int depth, Move bestMove)
         {
             Score = score;
             Depth = depth;
-        }
-        
-        public static int GetSize()
-        {
-            return Marshal.SizeOf<Entry>();
+            BestMove = bestMove;
         }
     }
 }

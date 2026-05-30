@@ -16,7 +16,7 @@ public static class MoveOrderer
         0,    // King   = 5
     };
 
-    public static void OrderMoves(Span<Move> moves, Board board)
+    public static void OrderMoves(Span<Move> moves, Board board, Move ttMove = default)
     {
         Span<int> scores = stackalloc int[moves.Length];
 
@@ -26,6 +26,13 @@ public static class MoveOrderer
             Piece movePiece = (Piece)board.GetPieceAt(moves[i].From)!;
             Piece? captured = board.GetPieceAt(moves[i].To);
 
+            // TT move goes first, above everything else
+            if (moves[i] == ttMove)
+            {
+                scores[i] = -10_000_000;  // Negative because scores.Sort sorts ascending
+                continue;
+            }
+            
             if (captured != null)
                 score += 10 * PieceValues[(int)captured] - PieceValues[(int)movePiece];
 

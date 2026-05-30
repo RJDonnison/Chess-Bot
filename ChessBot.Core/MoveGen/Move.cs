@@ -3,7 +3,7 @@ using ChessBot.Core.Utilities;
 
 namespace ChessBot.Core.MoveGen;
 
-public struct Move
+public struct Move : IEquatable<Move>
 {
     public int From { get; private set; }
     public int To { get; private set; }
@@ -32,4 +32,22 @@ public struct Move
 
         return $"{from}{to}";
     }
+
+    public bool Equals(Move other)
+    {
+        return From == other.From && To == other.To && Promotion == other.Promotion;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is Move other && Equals(other);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(From, To, Promotion);
+    }
+    
+    public static bool operator ==(Move left, Move right) => left.Equals(right);
+    public static bool operator !=(Move left, Move right) => !left.Equals(right);
 }
