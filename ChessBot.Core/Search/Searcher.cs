@@ -13,18 +13,14 @@ public class Searcher
     private const int MateScore = 29000;
 
     private Board _board = null!;
-
+    
     private readonly MoveGenerator _generator = new();
     private readonly RepetitionTable _repetitionTable = new();
+    private readonly TranspositionTable _tt = new();
 
     public Move GetBestMove(Board board)
     {
         _board = board;
-        return Search(Depth);
-    }
-
-    private Move Search(int depth)
-    {
         Move bestMove = default;
         int alpha = -Infinity;
 
@@ -38,7 +34,7 @@ public class Searcher
             _board.MakeMove(move);
             _repetitionTable.Push(_board.ZobristKey);
 
-            int score = -Search(depth - 1, 1, -Infinity, -alpha);
+            int score = -Search(Depth - 1, 1, -Infinity, -alpha);
 
             _repetitionTable.TryPop();
             _board.UnmakeMove(move);
@@ -52,7 +48,7 @@ public class Searcher
 
         return bestMove;
     }
-
+    
     private int Search(int depth, int ply, int alpha, int beta)
     {
         if (_board.Drawn || _repetitionTable.Contains(_board.ZobristKey))
@@ -60,6 +56,10 @@ public class Searcher
 
         if (depth == 0)
             return SearchCapturesOnly(alpha, beta);
+        
+        TranspositionTable.Entry entry = _tt.TryGet(_board.ZobristKey);
+        if (entry.Depth >= depth)
+            return entry.Score;
 
         Span<Move> moves = stackalloc Move[MoveGenerator.MaxMoves];
 
@@ -79,9 +79,14 @@ public class Searcher
             _repetitionTable.TryPop();
             _board.UnmakeMove(move);
             if (score >= beta)
+            {
+                _tt.Store(_board.ZobristKey, score, depth); 
                 return beta;
+            }
             alpha = int.Max(alpha, score);
         }
+        
+        _tt.Store(_board.ZobristKey, alpha, depth);
 
         return alpha;
     }
@@ -96,10 +101,9 @@ public class Searcher
         Span<Move> moves = stackalloc Move[MoveGenerator.MaxMoves];
 
         int moveCount = _generator.GenerateMoves(_board, ref moves, true);
-        if (moveCount == 0)
-            return Evaluator.Evaluate(_board);
-
+        
         OrderMoves(moves[..moveCount], _board);
+        
         for (int i = 0; i < moveCount; i++)
         {
             var move = moves[i];
