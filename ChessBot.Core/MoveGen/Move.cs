@@ -5,21 +5,34 @@ namespace ChessBot.Core.MoveGen;
 
 public struct Move : IEquatable<Move>
 {
-    public int From { get; private set; }
-    public int To { get; private set; }
-    public Piece? Promotion { get; private set; }
+    private readonly ushort _data;
 
-    public Move(int from, int to)
+    public int From => _data & 0x3F;
+    public int To => (_data >> 6) & 0x3F;
+    public bool IsEnPassant => (_data & (1 << 12)) != 0;
+    public Piece? Promotion
     {
-        From = from;
-        To = to;
+        get
+        {
+            int promotionCode = (_data >> 13) & 0x7;
+            if (promotionCode == 0)
+                return null;
+
+            return (Piece)promotionCode;
+        }
+    }
+
+    public Move(int from, int to, bool isEnPassant = false)
+    {
+        _data = (ushort)(from | (to << 6) | (isEnPassant ? 1 << 12 : 0));
     }
 
     public Move(int from, int to, Piece promotion)
     {
-        From = from;
-        To = to;
-        Promotion = promotion;
+        if (promotion is Piece.Pawn or Piece.King)
+            throw new ArgumentOutOfRangeException(nameof(promotion));
+
+        _data = (ushort)(from | (to << 6) | ((int)promotion << 13));
     }
 
     public override string ToString()
@@ -35,7 +48,7 @@ public struct Move : IEquatable<Move>
 
     public bool Equals(Move other)
     {
-        return From == other.From && To == other.To && Promotion == other.Promotion;
+        return _data == other._data;
     }
 
     public override bool Equals(object? obj)
@@ -45,7 +58,7 @@ public struct Move : IEquatable<Move>
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(From, To, Promotion);
+        return _data.GetHashCode();
     }
 
     public static bool operator ==(Move left, Move right) => left.Equals(right);

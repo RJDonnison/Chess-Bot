@@ -313,7 +313,7 @@ public class MoveGenerator
                     }
                 }
 
-                moves[_currMoveIndex++] = (new Move(from, to));
+                moves[_currMoveIndex++] = new Move(from, to, isEnPassant: true);
             }
         }
     }

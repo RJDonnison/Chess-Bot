@@ -26,6 +26,9 @@ public static class MoveOrderer
             Piece movePiece = (Piece)board.GetPieceAt(moves[i].From)!;
             Piece? captured = board.GetPieceAt(moves[i].To);
 
+            if (moves[i].IsEnPassant)
+                captured = Piece.Pawn;
+            
             // TT move goes first, above everything else
             if (moves[i] == ttMove)
             {
@@ -34,9 +37,9 @@ public static class MoveOrderer
             }
 
             if (captured != null)
-                score += 10 * PieceValues[(int)captured] - PieceValues[(int)movePiece];
+                score += 1_000_000 + 10 * PieceValues[(int)captured] - PieceValues[(int)movePiece];
             else if (moves[i].Promotion != null)
-                score += PieceValues[(int)moves[i].Promotion!];
+                score += 1_000_000 + PieceValues[(int)moves[i].Promotion!];
             else
             {
                 // Quiet move, killer moves

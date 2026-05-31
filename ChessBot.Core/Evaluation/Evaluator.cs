@@ -187,10 +187,10 @@ public class Evaluator
 
         return score;
     }
-
+    
+    // 0 = opening, 24 = endgame
     private static int CalculateGamePhase(Board board)
     {
-        // 0 = opening, 24 = endgame
         int phase = 0;
 
         for (int color = 0; color < 2; color++)
@@ -201,7 +201,7 @@ public class Evaluator
             phase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Queen]) * 4;
         }
 
-        return Math.Clamp(phase, 0, 24);
+        return 24 - Math.Clamp(phase, 0, 24);
     }
 
     private static int MirrorSquare(int square) => (7 - square / 8) * 8 + square % 8;

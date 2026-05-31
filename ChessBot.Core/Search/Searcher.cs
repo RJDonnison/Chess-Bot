@@ -11,9 +11,6 @@ public class Searcher
     private const int Infinity = 30000;
     private const int MateScore = 29000;
 
-    // Logging 
-    private int _positionsEvaluated;
-
     private Board _board = null!;
     private Move _bestMove;
     private int _bestScore;
@@ -38,8 +35,6 @@ public class Searcher
 
         for (int depth = 1; depth <= 100; depth++)
         {
-            _positionsEvaluated = 0;
-
             if (depth <= 4)
                 SearchRoot(depth, -Infinity, Infinity);
             else
@@ -70,19 +65,6 @@ public class Searcher
 
             previousScore = _bestScore;
 
-            if (!_abortSearch)
-            {
-                string scoreStr = IsMate(_bestScore)
-                    ? $"Mate in {MovesToMate(_bestScore)}"
-                    : $"{_bestScore,7}";
-
-                Console.WriteLine(
-                    $"Depth: {depth,3} | " +
-                    $"Score: {scoreStr,12} | " +
-                    $"Positions: {_positionsEvaluated,8}"
-                );
-            }
-
             // Stop if we've found a mate or search stopped
             if (_abortSearch)
                 break;
@@ -98,7 +80,6 @@ public class Searcher
 
     public Move GetFoundMove()
     {
-        Console.WriteLine($"Search complete | Best: {_bestMove} | Score: {_bestScore}");
         return _bestMove;
     }
 
@@ -146,8 +127,6 @@ public class Searcher
 
     private int Search(int depth, int ply, int alpha, int beta)
     {
-        _positionsEvaluated++;
-
         if (_abortSearch)
             return 0;
 
@@ -181,17 +160,17 @@ public class Searcher
         OrderMoves(moves[..moveCount], _board, ttMove, killer1, killer2);
 
         bool inCheck = _generator.IsInCheck(); // Used for extension, and null move pruning
-        
+
         // Null move pruning
         if (!inCheck && depth >= 3 && ply > 0 && HasNonPawnMaterial())
         {
             int reduction = 3;
-            
+
             _board.MakeNullMove();
             _repetitionTable.Push(_board.ZobristKey);
-            
+
             int nullScore = -Search(depth - 1 - reduction, ply + 1, -beta, -beta + 1);
-            
+
             _repetitionTable.TryPop();
             _board.UnmakeNullMove();
 
@@ -290,10 +269,10 @@ public class Searcher
         int color = _board.ToMove;
         return _board.Bitboards[color, (int)Piece.Knight] != 0 ||
                _board.Bitboards[color, (int)Piece.Bishop] != 0 ||
-               _board.Bitboards[color, (int)Piece.Rook]   != 0 ||
-               _board.Bitboards[color, (int)Piece.Queen]  != 0;
+               _board.Bitboards[color, (int)Piece.Rook] != 0 ||
+               _board.Bitboards[color, (int)Piece.Queen] != 0;
     }
-    
+
     private bool IsMate(int score) => Math.Abs(score) >= MateScore - 500;
 
     private int MovesToMate(int score) => (MateScore - Math.Abs(score) + 1) / 2;

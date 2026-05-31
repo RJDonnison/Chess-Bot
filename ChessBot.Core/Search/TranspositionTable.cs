@@ -28,7 +28,7 @@ public class TranspositionTable
     public void Store(ulong key, int score, int depth, int ply, Move bestMove, int flag)
     {
         score = NormalizeMateScoreForStorage(score, ply);
-        _entries[Index(key)] = new Entry(key, score, depth, bestMove, flag);
+        _entries[Index(key)] = new Entry(key, (short)score, (byte)depth, bestMove, (byte)flag);
     }
 
     public Move GetBestMove(ulong key)
@@ -55,15 +55,16 @@ public class TranspositionTable
         return null; // Bounds didn't cause a cutoff
     }
 
+    [StructLayout(LayoutKind.Sequential)]
     public struct Entry
     {
         public readonly ulong Key;
-        public readonly int Score;
-        public readonly int Depth;
+        public readonly short Score;
+        public readonly byte Depth;
         public readonly Move BestMove;
-        public readonly int Flag;
+        public readonly byte Flag;
 
-        public Entry(ulong key, int score, int depth, Move bestMove, int flag)
+        public Entry(ulong key, short score, byte depth, Move bestMove, byte flag)
         {
             Key = key;
             Score = score;
