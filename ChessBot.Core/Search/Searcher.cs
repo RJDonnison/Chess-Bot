@@ -161,7 +161,7 @@ public class Searcher
         // If the window has collapsed, no point searching more
         if (alpha >= beta) return alpha;
 
-        if (depth == 0)
+        if (depth <= 0)
             return SearchCapturesOnly(alpha, beta);
 
         int? ttScore = _tt.TryGetScore(_board.ZobristKey, depth, ply, alpha, beta);
@@ -180,7 +180,27 @@ public class Searcher
 
         OrderMoves(moves[..moveCount], _board, ttMove, killer1, killer2);
 
-        bool inCheck = _generator.IsInCheck(); // Used for extension
+        bool inCheck = _generator.IsInCheck(); // Used for extension, and null move pruning
+        
+        // Null move pruning
+        if (!inCheck && depth >= 3 && ply > 0 && HasNonPawnMaterial())
+        {
+            int reduction = 3;
+            
+            _board.MakeNullMove();
+            _repetitionTable.Push(_board.ZobristKey);
+            
+            int nullScore = -Search(depth - 1 - reduction, ply + 1, -beta, -beta + 1);
+            
+            _repetitionTable.TryPop();
+            _board.UnmakeNullMove();
+
+            if (_abortSearch) return 0;
+
+            // Current pos is so good opponent cant recover even with free move
+            if (nullScore >= beta)
+                return beta;
+        }
 
         int originalAlpha = alpha;
         Move bestMove = default;
@@ -265,6 +285,15 @@ public class Searcher
         return alpha;
     }
 
+    private bool HasNonPawnMaterial()
+    {
+        int color = _board.ToMove;
+        return _board.Bitboards[color, (int)Piece.Knight] != 0 ||
+               _board.Bitboards[color, (int)Piece.Bishop] != 0 ||
+               _board.Bitboards[color, (int)Piece.Rook]   != 0 ||
+               _board.Bitboards[color, (int)Piece.Queen]  != 0;
+    }
+    
     private bool IsMate(int score) => Math.Abs(score) >= MateScore - 500;
 
     private int MovesToMate(int score) => (MateScore - Math.Abs(score) + 1) / 2;

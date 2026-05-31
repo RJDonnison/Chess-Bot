@@ -41,7 +41,7 @@ public class Board
 
     public void MakeMove(Move move)
     {
-        HalfMoveClock += 1;
+        HalfMoveClock++;
 
         Piece piece = _squarePieces[move.From]!.Value;
         ulong fromBit = 1UL << move.From;
@@ -186,9 +186,24 @@ public class Board
         _occupied = _whitePieces | _blackPieces;
     }
 
+    public void MakeNullMove()
+    {
+        ToMove ^= 1;
+        ZobristKey ^= ZobristTables.SideToMove;
+
+        if (EnPassantSquare != null)
+        {
+            ZobristKey ^= ZobristTables.EnPassantFile[EnPassantSquare.Value % 8];
+            EnPassantSquare = null;
+        }
+
+        HalfMoveClock++;
+        _history.Push(new BoardState(default, null, null, CastlingRights));
+    }
+
     public void UnmakeMove(Move move)
     {
-        HalfMoveClock -= 1;
+        HalfMoveClock--;
         // Update ToMove
         ToMove ^= 1;
         ZobristKey ^= ZobristTables.SideToMove;
@@ -291,6 +306,21 @@ public class Board
 
         // Update _occupied
         _occupied = _whitePieces | _blackPieces;
+    }
+
+    public void UnmakeNullMove()
+    {
+        BoardState state = _history.Pop();
+        EnPassantSquare = state.EnPassantSquare;
+        CastlingRights = state.CastlingRights;
+
+        ToMove ^= 1;
+        ZobristKey ^= ZobristTables.SideToMove;
+        
+        if (EnPassantSquare != null)
+            ZobristKey ^= ZobristTables.EnPassantFile[EnPassantSquare.Value % 8];
+
+        HalfMoveClock--;
     }
 
     public void RebuildMailbox()
