@@ -41,8 +41,6 @@ public class Board
 
     public void MakeMove(Move move)
     {
-        HalfMoveClock += 1;
-
         Piece piece = _squarePieces[move.From]!.Value;
         ulong fromBit = 1UL << move.From;
         ulong toBit = 1UL << move.To;
@@ -61,6 +59,11 @@ public class Board
             _blackPieces ^= fromBit;
 
         Piece? captured = _squarePieces[move.To];
+
+        if (piece == Piece.Pawn || captured != null)
+            HalfMoveClock = 0;
+        else
+            HalfMoveClock++;
 
         // En passant capture
         if (piece == Piece.Pawn && move.To == EnPassantSquare)
@@ -94,7 +97,7 @@ public class Board
                 _whitePieces ^= toBit;
         }
 
-        BoardState currentState = new BoardState(piece, captured, EnPassantSquare, CastlingRights);
+        BoardState currentState = new BoardState(piece, captured, EnPassantSquare, CastlingRights, HalfMoveClock);
         _history.Push(currentState);
 
         // Add piece to new square
@@ -112,6 +115,9 @@ public class Board
             _blackPieces ^= toBit;
 
         // Update en passant square
+        if (EnPassantSquare != null)
+            ZobristKey ^= ZobristTables.EnPassantFile[EnPassantSquare.Value % 8];
+
         EnPassantSquare = piece == Piece.Pawn && Math.Abs(move.To - move.From) == 16
             ? (move.From + move.To) / 2
             : null;
@@ -183,19 +189,36 @@ public class Board
         _occupied = _whitePieces | _blackPieces;
     }
 
+    public void MakeNullMove()
+    {
+        ToMove ^= 1;
+        ZobristKey ^= ZobristTables.SideToMove;
+
+        if (EnPassantSquare != null)
+        {
+            ZobristKey ^= ZobristTables.EnPassantFile[EnPassantSquare.Value % 8];
+            EnPassantSquare = null;
+        }
+
+        HalfMoveClock++;
+        _history.Push(new BoardState(default, null, EnPassantSquare, CastlingRights, HalfMoveClock));
+    }
+
     public void UnmakeMove(Move move)
     {
-        HalfMoveClock -= 1;
         // Update ToMove
         ToMove ^= 1;
         ZobristKey ^= ZobristTables.SideToMove;
 
         ZobristKey ^= ZobristTables.CastlingRights[CastlingRights];
+        if (EnPassantSquare != null)
+            ZobristKey ^= ZobristTables.EnPassantFile[EnPassantSquare.Value % 8];
 
         // Restore state
         BoardState currentState = _history.Pop();
         EnPassantSquare = currentState.EnPassantSquare;
         CastlingRights = currentState.CastlingRights;
+        HalfMoveClock = currentState.HalfMoveClock;
 
         ZobristKey ^= ZobristTables.CastlingRights[CastlingRights];
         if (EnPassantSquare != null)
@@ -288,6 +311,21 @@ public class Board
         _occupied = _whitePieces | _blackPieces;
     }
 
+    public void UnmakeNullMove()
+    {
+        BoardState state = _history.Pop();
+        EnPassantSquare = state.EnPassantSquare;
+        CastlingRights = state.CastlingRights;
+
+        ToMove ^= 1;
+        ZobristKey ^= ZobristTables.SideToMove;
+
+        if (EnPassantSquare != null)
+            ZobristKey ^= ZobristTables.EnPassantFile[EnPassantSquare.Value % 8];
+
+        HalfMoveClock--;
+    }
+
     public void RebuildMailbox()
     {
         Array.Fill(_squarePieces, null);
@@ -366,5 +404,6 @@ record BoardState(
     Piece Moved,
     Piece? Captured,
     int? EnPassantSquare,
-    byte CastlingRights
+    byte CastlingRights,
+    int HalfMoveClock
 );

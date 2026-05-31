@@ -16,7 +16,7 @@ public static class MoveOrderer
         0,    // King   = 5
     };
 
-    public static void OrderMoves(Span<Move> moves, Board board)
+    public static void OrderMoves(Span<Move> moves, Board board, Move ttMove = default, Move killer1 = default, Move killer2 = default)
     {
         Span<int> scores = stackalloc int[moves.Length];
 
@@ -26,17 +26,34 @@ public static class MoveOrderer
             Piece movePiece = (Piece)board.GetPieceAt(moves[i].From)!;
             Piece? captured = board.GetPieceAt(moves[i].To);
 
-            if (captured != null)
-                score += 10 * PieceValues[(int)captured] - PieceValues[(int)movePiece];
+            if (moves[i].IsEnPassant)
+                captured = Piece.Pawn;
+            
+            // TT move goes first, above everything else
+            if (moves[i] == ttMove)
+            {
+                scores[i] = -10_000_000;  // Negative because scores.Sort sorts ascending
+                continue;
+            }
 
-            if (moves[i].Promotion != null)
-                score += PieceValues[(int)moves[i].Promotion!];
+            if (captured != null)
+                score += 1_000_000 + 10 * PieceValues[(int)captured] - PieceValues[(int)movePiece];
+            else if (moves[i].Promotion != null)
+                score += 1_000_000 + PieceValues[(int)moves[i].Promotion!];
             else
             {
-                // Quiet move: score based on PST positional gain
-                int fromValue = Evaluator.GetPositionalValue(movePiece, (Color)board.ToMove, moves[i].From);
-                int toValue = Evaluator.GetPositionalValue(movePiece, (Color)board.ToMove, moves[i].To);
-                score += toValue - fromValue;
+                // Quiet move, killer moves
+                if (moves[i] == killer1)
+                    score += 900_000;
+                else if (moves[i] == killer2)
+                    score += 800_000;
+                else
+                {
+                    // Score based on PST positional gain
+                    int fromValue = Evaluator.GetPositionalValue(movePiece, (Color)board.ToMove, moves[i].From);
+                    int toValue = Evaluator.GetPositionalValue(movePiece, (Color)board.ToMove, moves[i].To);
+                    score += toValue - fromValue;
+                }
             }
 
             scores[i] = -score;

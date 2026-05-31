@@ -1,6 +1,8 @@
 using System.Numerics;
 using ChessBot.Core.Core;
 using ChessBot.Core.Evaluation.PieceSquareTables;
+using ChessBot.Core.MoveGen;
+using ChessBot.Core.MoveGen.Magic;
 using ChessBot.Core.Search;
 using ChessBot.Core.Utilities;
 
@@ -8,6 +10,15 @@ namespace ChessBot.Core.Evaluation;
 
 public class Evaluator
 {
+    // Bonuses by rank for passed pawns
+    private static readonly int[] PassedPawnBonus = { 0, 15, 15, 25, 40, 60, 90, 0 };
+
+    // Penalties
+    private const int DoubledPawnPenalty = -10;
+    private const int IsolatedPawnPenalty = -8;
+
+    private const int MobilityBonus = 2;
+
     // Cache for PST getter methods to avoid reflection and enable dispatch
     private static readonly PstGetter[] MgGetters = new PstGetter[]
     {
@@ -38,18 +49,23 @@ public class Evaluator
         int mgScore = 0;
         int egScore = 0;
 
-        // Evaluate white pieces
         mgScore += EvaluateSideMg(board, Color.White);
         egScore += EvaluateSideEg(board, Color.White);
-
-        // Evaluate black pieces (subtract from score)
         mgScore -= EvaluateSideMg(board, Color.Black);
         egScore -= EvaluateSideEg(board, Color.Black);
 
         // Interpolate between middlegame and endgame scores
         int interpolatedScore = (mgScore * (24 - gamePhase) + egScore * gamePhase) / 24;
 
-        if (interpolatedScore > 300)
+        int pawnScore = 0;
+        pawnScore += EvaluatePawnStructure(board, Color.White);
+        pawnScore -= EvaluatePawnStructure(board, Color.Black);
+        interpolatedScore += pawnScore;
+
+        int mobilityScore = EvaluateMobility(board);
+        interpolatedScore += mobilityScore;
+
+        if (gamePhase > 18 && interpolatedScore > 300)
         {
             int friendlyKingSq = BitOperations.TrailingZeroCount(board.Bitboards[board.ToMove, (int)Piece.King]);
             int enemyKingSq = BitOperations.TrailingZeroCount(board.Bitboards[board.ToMove ^ 1, (int)Piece.King]);
@@ -58,6 +74,78 @@ public class Evaluator
         }
 
         return board.ToMove == (int)Color.White ? interpolatedScore : -interpolatedScore;
+    }
+
+    private static int EvaluatePawnStructure(Board board, Color color)
+    {
+        int bonus = 0;
+        ulong enemyPawns = board.Bitboards[(int)color ^ 1, (int)Piece.Pawn];
+        ulong pawns = board.Bitboards[(int)color, (int)Piece.Pawn];
+
+        while (pawns != 0)
+        {
+            int sq = BitOperations.TrailingZeroCount(pawns);
+            int file = sq % 8;
+            int rank = sq / 8;
+
+            // Passed pawn 
+            ulong passedMask = Masks.PassedPawnMask[(int)color, sq];
+            if ((enemyPawns & passedMask) == 0)
+            {
+                int advancedRank = color == Color.White ? rank : 7 - rank;
+                bonus += PassedPawnBonus[advancedRank];
+            }
+
+            // Doubled pawn 
+            ulong fileMask = Masks.FileMask[file];
+            if (BitOperations.PopCount(pawns & fileMask) > 1)
+                bonus += DoubledPawnPenalty / 2; // Penalty applied to both pawns
+
+            // Isolated pawn 
+            if ((pawns & Masks.IsolatedPawnMask[file]) == 0)
+                bonus += IsolatedPawnPenalty;
+
+            pawns &= pawns - 1;
+        }
+
+        return bonus;
+    }
+
+    private static int EvaluateMobility(Board board)
+    {
+        // Count pseudo-legal moves 
+        int whiteMobility = CountMobility(board, Color.White);
+        int blackMobility = CountMobility(board, Color.Black);
+
+        return (whiteMobility - blackMobility) * MobilityBonus;
+    }
+
+    private static int CountMobility(Board board, Color color)
+    {
+        int mobility = 0;
+
+        for (int piece = 0; piece < 6; piece++)
+        {
+            ulong bitboard = board.Bitboards[(int)color, piece];
+
+            while (bitboard != 0)
+            {
+                int from = BitOperations.TrailingZeroCount(bitboard);
+                bitboard &= bitboard - 1;
+
+                ulong targets = (Piece)piece switch
+                {
+                    Piece.Knight => KnightAttacks.Table[from],
+                    Piece.Rook => MagicBitboards.GetRookMoves(from, board.Occupied),
+                    Piece.Bishop => MagicBitboards.GetBishopMoves(from, board.Occupied),
+                    Piece.Queen => MagicBitboards.GetQueenMoves(from, board.Occupied),
+                    _ => 0UL // Pawns and king excluded
+                };
+                mobility += BitOperations.PopCount(targets & ~board.FriendlyPieces);
+            }
+        }
+
+        return mobility;
     }
 
     private static int EvaluateSideMg(Board board, Color color)
@@ -99,23 +187,21 @@ public class Evaluator
 
         return score;
     }
-
+    
+    // 0 = opening, 24 = endgame
     private static int CalculateGamePhase(Board board)
     {
-        // 0 = opening, 24 = endgame
-        int totalPhase = 0;
+        int phase = 0;
 
         for (int color = 0; color < 2; color++)
         {
-            totalPhase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Pawn]) * 1;      // Pawn
-            totalPhase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Knight]) * 3;    // Knight
-            totalPhase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Bishop]) * 3;    // Bishop
-            totalPhase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Rook]) * 5;      // Rook
-            totalPhase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Queen]) * 9;     // Queen
+            phase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Knight]);
+            phase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Bishop]);
+            phase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Rook]) * 2;
+            phase += BitOperations.PopCount(board.Bitboards[color, (int)Piece.Queen]) * 4;
         }
 
-        // Clamp to 0-24 range (24 * total_phase_pieces / total_opening_phase_pieces)
-        return totalPhase > 0 ? Math.Min(24, (24 * totalPhase) / 96) : 24;
+        return 24 - Math.Clamp(phase, 0, 24);
     }
 
     private static int MirrorSquare(int square) => (7 - square / 8) * 8 + square % 8;
