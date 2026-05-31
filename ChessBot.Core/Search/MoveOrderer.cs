@@ -16,7 +16,7 @@ public static class MoveOrderer
         0,    // King   = 5
     };
 
-    public static void OrderMoves(Span<Move> moves, Board board, Move ttMove = default)
+    public static void OrderMoves(Span<Move> moves, Board board, Move ttMove = default, Move killer1 = default, Move killer2 = default)
     {
         Span<int> scores = stackalloc int[moves.Length];
 
@@ -35,15 +35,22 @@ public static class MoveOrderer
 
             if (captured != null)
                 score += 10 * PieceValues[(int)captured] - PieceValues[(int)movePiece];
-
-            if (moves[i].Promotion != null)
+            else if (moves[i].Promotion != null)
                 score += PieceValues[(int)moves[i].Promotion!];
             else
             {
-                // Quiet move: score based on PST positional gain
-                int fromValue = Evaluator.GetPositionalValue(movePiece, (Color)board.ToMove, moves[i].From);
-                int toValue = Evaluator.GetPositionalValue(movePiece, (Color)board.ToMove, moves[i].To);
-                score += toValue - fromValue;
+                // Quiet move, killer moves
+                if (moves[i] == killer1)
+                    score += 900_000;
+                else if (moves[i] == killer2)
+                    score += 800_000;
+                else
+                {
+                    // Score based on PST positional gain
+                    int fromValue = Evaluator.GetPositionalValue(movePiece, (Color)board.ToMove, moves[i].From);
+                    int toValue = Evaluator.GetPositionalValue(movePiece, (Color)board.ToMove, moves[i].To);
+                    score += toValue - fromValue;
+                }
             }
 
             scores[i] = -score;

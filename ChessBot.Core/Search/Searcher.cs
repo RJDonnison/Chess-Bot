@@ -8,19 +8,19 @@ using static MoveOrderer;
 
 public class Searcher
 {
-    private const int MaxExtensions = 16;
     private const int Infinity = 30000;
     private const int MateScore = 29000;
 
     // Logging 
     private int _positionsEvaluated;
-    private int _ttStores;
-    private int _pvsResearches;
 
     private Board _board = null!;
     private Move _bestMove;
     private int _bestScore;
     private bool _abortSearch;
+
+    private const int MaxPly = 64;
+    private readonly Move[,] _killers = new Move[MaxPly, 2];
 
     private readonly MoveGenerator _generator = new();
     private readonly RepetitionTable _repetitionTable = new();
@@ -32,14 +32,13 @@ public class Searcher
         _abortSearch = false;
         _bestMove = default;
         _bestScore = -Infinity;
+        Array.Clear(_killers, 0, _killers.Length);
 
         int previousScore = 0;
 
         for (int depth = 1; depth <= 100; depth++)
         {
             _positionsEvaluated = 0;
-            _ttStores = 0;
-            _pvsResearches = 0;
 
             if (depth <= 4)
                 SearchRoot(depth, -Infinity, Infinity);
@@ -80,12 +79,9 @@ public class Searcher
                 Console.WriteLine(
                     $"Depth: {depth,3} | " +
                     $"Score: {scoreStr,12} | " +
-                    $"Positions: {_positionsEvaluated,8} | " +
-                    $"Researches: {_pvsResearches,5} | " +
-                    $"TT Stores: {_ttStores,8}"
+                    $"Positions: {_positionsEvaluated,8}"
                 );
             }
-
 
             // Stop if we've found a mate or search stopped
             if (_abortSearch)
@@ -127,10 +123,7 @@ public class Searcher
                 score = -Search(depth - 1, 1, -alpha - 1, -alpha);
                 // Re-search with full window if it beat alpha unexpectedly
                 if (score > alpha)
-                {
-                    _pvsResearches++;
                     score = -Search(depth - 1, 1, -beta, -alpha);
-                }
             }
 
             _repetitionTable.TryPop();
@@ -182,7 +175,10 @@ public class Searcher
             return _generator.IsInCheck() ? -MateScore + ply : 0;
 
         Move ttMove = _tt.GetBestMove(_board.ZobristKey);
-        OrderMoves(moves[..moveCount], _board, ttMove);
+        Move killer1 = ply < MaxPly ? _killers[ply, 0] : default;
+        Move killer2 = ply < MaxPly ? _killers[ply, 1] : default;
+
+        OrderMoves(moves[..moveCount], _board, ttMove, killer1, killer2);
 
         bool inCheck = _generator.IsInCheck(); // Used for extension
 
@@ -205,17 +201,20 @@ public class Searcher
                 score = -Search(depth + extension - 1, ply + 1, -alpha - 1, -alpha);
                 // Re-search with full window if it beat alpha unexpectedly
                 if (score > alpha && score < beta)
-                {
-                    _pvsResearches++;
                     score = -Search(depth + extension - 1, ply + 1, -beta, -alpha);
-                }
             }
 
             _repetitionTable.TryPop();
             _board.UnmakeMove(move);
             if (score >= beta)
             {
-                _ttStores++;
+                bool isCapture = _board.GetPieceAt(moves[i].To) != null;
+                if (!isCapture && ply < MaxPly)
+                {
+                    _killers[ply, 1] = _killers[ply, 0];
+                    _killers[ply, 0] = moves[i];
+                }
+
                 _tt.Store(_board.ZobristKey, score, depth, ply, move, TranspositionTable.Lowerbound);
                 return beta;
             }
@@ -227,7 +226,6 @@ public class Searcher
             }
         }
 
-        _ttStores++;
         int flag = alpha > originalAlpha ? TranspositionTable.Exact : TranspositionTable.Upperbound;
         _tt.Store(_board.ZobristKey, alpha, depth, ply, bestMove, flag);
         return alpha;

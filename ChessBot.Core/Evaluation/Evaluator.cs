@@ -14,11 +14,11 @@ public class Evaluator
     private static readonly int[] PassedPawnBonus = { 0, 15, 15, 25, 40, 60, 90, 0 };
 
     // Penalties
-    private const int DoubledPawnPenalty  = -10;
+    private const int DoubledPawnPenalty = -10;
     private const int IsolatedPawnPenalty = -8;
 
     private const int MobilityBonus = 2;
-    
+
     // Cache for PST getter methods to avoid reflection and enable dispatch
     private static readonly PstGetter[] MgGetters = new PstGetter[]
     {
@@ -56,12 +56,12 @@ public class Evaluator
 
         // Interpolate between middlegame and endgame scores
         int interpolatedScore = (mgScore * (24 - gamePhase) + egScore * gamePhase) / 24;
-        
+
         int pawnScore = 0;
         pawnScore += EvaluatePawnStructure(board, Color.White);
         pawnScore -= EvaluatePawnStructure(board, Color.Black);
         interpolatedScore += pawnScore;
-        
+
         int mobilityScore = EvaluateMobility(board);
         interpolatedScore += mobilityScore;
 
@@ -81,13 +81,13 @@ public class Evaluator
         int bonus = 0;
         ulong enemyPawns = board.Bitboards[(int)color ^ 1, (int)Piece.Pawn];
         ulong pawns = board.Bitboards[(int)color, (int)Piece.Pawn];
-        
+
         while (pawns != 0)
         {
             int sq = BitOperations.TrailingZeroCount(pawns);
             int file = sq % 8;
             int rank = sq / 8;
-            
+
             // Passed pawn 
             ulong passedMask = Masks.PassedPawnMask[(int)color, sq];
             if ((enemyPawns & passedMask) == 0)
@@ -110,7 +110,7 @@ public class Evaluator
 
         return bonus;
     }
-    
+
     private static int EvaluateMobility(Board board)
     {
         // Count pseudo-legal moves 
@@ -144,7 +144,7 @@ public class Evaluator
                 mobility += BitOperations.PopCount(targets & ~board.FriendlyPieces);
             }
         }
-        
+
         return mobility;
     }
 
