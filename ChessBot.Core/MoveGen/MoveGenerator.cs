@@ -39,10 +39,10 @@ public class MoveGenerator
         // Skip other moves as double checked so only king can move
         if (_checkMask != 0)
         {
-            GeneratePseudoLegalMoves(moves, Piece.Knight);
-            GeneratePseudoLegalMoves(moves, Piece.Rook);
-            GeneratePseudoLegalMoves(moves, Piece.Bishop);
-            GeneratePseudoLegalMoves(moves, Piece.Queen);
+            GenerateLegalMoves(moves, Piece.Knight);
+            GenerateLegalMoves(moves, Piece.Rook);
+            GenerateLegalMoves(moves, Piece.Bishop);
+            GenerateLegalMoves(moves, Piece.Queen);
             GeneratePawnMoves(moves);
         }
 
@@ -149,7 +149,7 @@ public class MoveGenerator
         return MagicBitboards.GetBishopMoves(sq, occMasked) ^ attacks;
     }
 
-    private void GeneratePseudoLegalMoves(Span<Move> moves, Piece piece)
+    private void GenerateLegalMoves(Span<Move> moves, Piece piece)
     {
         ulong bitboard = _board.Bitboards[_board.ToMove, (int)piece];
 

@@ -1,6 +1,8 @@
 using System.Numerics;
 using ChessBot.Core.Core;
 using ChessBot.Core.Evaluation.PieceSquareTables;
+using ChessBot.Core.MoveGen;
+using ChessBot.Core.MoveGen.Magic;
 using ChessBot.Core.Search;
 using ChessBot.Core.Utilities;
 
@@ -14,6 +16,8 @@ public class Evaluator
     // Penalties
     private const int DoubledPawnPenalty  = -10;
     private const int IsolatedPawnPenalty = -8;
+
+    private const int MobilityBonus = 2;
     
     // Cache for PST getter methods to avoid reflection and enable dispatch
     private static readonly PstGetter[] MgGetters = new PstGetter[]
@@ -57,6 +61,9 @@ public class Evaluator
         pawnScore += EvaluatePawnStructure(board, Color.White);
         pawnScore -= EvaluatePawnStructure(board, Color.Black);
         interpolatedScore += pawnScore;
+        
+        int mobilityScore = EvaluateMobility(board);
+        interpolatedScore += mobilityScore;
 
         if (gamePhase > 18 && interpolatedScore > 300)
         {
@@ -102,6 +109,43 @@ public class Evaluator
         }
 
         return bonus;
+    }
+    
+    private static int EvaluateMobility(Board board)
+    {
+        // Count pseudo-legal moves 
+        int whiteMobility = CountMobility(board, Color.White);
+        int blackMobility = CountMobility(board, Color.Black);
+
+        return (whiteMobility - blackMobility) * MobilityBonus;
+    }
+
+    private static int CountMobility(Board board, Color color)
+    {
+        int mobility = 0;
+
+        for (int piece = 0; piece < 6; piece++)
+        {
+            ulong bitboard = board.Bitboards[(int)color, piece];
+
+            while (bitboard != 0)
+            {
+                int from = BitOperations.TrailingZeroCount(bitboard);
+                bitboard &= bitboard - 1;
+
+                ulong targets = (Piece)piece switch
+                {
+                    Piece.Knight => KnightAttacks.Table[from],
+                    Piece.Rook => MagicBitboards.GetRookMoves(from, board.Occupied),
+                    Piece.Bishop => MagicBitboards.GetBishopMoves(from, board.Occupied),
+                    Piece.Queen => MagicBitboards.GetQueenMoves(from, board.Occupied),
+                    _ => 0UL // Pawns and king excluded
+                };
+                mobility += BitOperations.PopCount(targets & ~board.FriendlyPieces);
+            }
+        }
+        
+        return mobility;
     }
 
     private static int EvaluateSideMg(Board board, Color color)
