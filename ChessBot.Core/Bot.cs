@@ -7,8 +7,8 @@ namespace ChessBot.Core;
 
 public class Bot
 {
-    private readonly Searcher _searcher = new Searcher();
-    private const int ThinkTimeMs = 1000;
+    private readonly Searcher _searcher = new();
+    private const int ThinkTimeMs = 500;
 
     public string GetBestMove(string fen)
     {

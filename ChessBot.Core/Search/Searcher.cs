@@ -11,6 +11,11 @@ public class Searcher
     private const int Infinity = 30000;
     private const int MateScore = 29000;
 
+    // Logging 
+    private int _positionsEvaluated;
+    private int _ttStores;
+    private int _pvsResearches;
+    
     private Board _board = null!;
     private Move _bestMove;
     private int _bestScore;
@@ -27,35 +32,59 @@ public class Searcher
         _bestMove = default;
         _bestScore = -Infinity;
         
+        int previousScore = 0;
+        
         for (int depth = 1; depth <= 100; depth++)
         {
-            int alpha = -Infinity;
+            _positionsEvaluated = 0;
+            _ttStores = 0;
+            _pvsResearches = 0;
 
-            Span<Move> moves = _generator.GenerateMoves(_board);
-            OrderMoves(moves, _board, _bestMove);
-
-            for (int i = 0; i < moves.Length; i++)
+            if (depth <= 4)
+                SearchRoot(depth, -Infinity, Infinity);
+            else
             {
-                if (_abortSearch) break;
+                int delta = 25;
+                int alpha = previousScore - delta;
+                int beta = previousScore + delta;
 
-                _board.MakeMove(moves[i]);
-                _repetitionTable.Push(_board.ZobristKey);
-
-                int score = -Search(depth - 1, ply: 1, -Infinity, -alpha);
-
-                _repetitionTable.TryPop();
-                _board.UnmakeMove(moves[i]);
-
-                if (score > alpha)
+                while (true)
                 {
-                    alpha = score;
-                    _bestScore = score;
-                    _bestMove = moves[i];
+                    if (_abortSearch) break;
+                    
+                    int score = SearchRoot(depth, alpha, beta);
+                    
+                    if (score <= alpha)
+                    {
+                        alpha -= delta;
+                        delta *= 2;
+                    }
+                    else if (score >= beta)
+                    {
+                        beta  += delta;
+                        delta *= 2;
+                    }
+                    else break;
                 }
             }
 
+            previousScore = _bestScore;
+
             if (!_abortSearch)
-                Console.WriteLine($"Depth: {depth} | Score: {_bestScore}");
+            {
+                string scoreStr = IsMate(_bestScore)
+                    ? $"Mate in {MovesToMate(_bestScore)}"
+                    : $"{_bestScore,7}";
+
+                Console.WriteLine(
+                    $"Depth: {depth,3} | " +
+                    $"Score: {scoreStr,12} | " +
+                    $"Positions: {_positionsEvaluated,8} | " +
+                    $"Researches: {_pvsResearches,5} | " +
+                    $"TT Stores: {_ttStores,8}"
+                );
+            }
+
 
             // Stop if we've found a mate or search stopped
             if (_abortSearch)
@@ -75,20 +104,75 @@ public class Searcher
         Console.WriteLine($"Search complete | Best: {_bestMove} | Score: {_bestScore}");
         return _bestMove;
     }
+
+    private int SearchRoot(int depth, int alpha, int beta)
+    {
+        Span<Move> moves = _generator.GenerateMoves(_board);
+        OrderMoves(moves, _board, _bestMove);
+        
+        for (int i = 0; i < moves.Length; i++)
+        {
+            if (_abortSearch) break;
+
+            _board.MakeMove(moves[i]);
+            _repetitionTable.Push(_board.ZobristKey);
+                
+            int score;
+            if (i == 0) 
+                score = -Search(depth - 1, 1, -beta, -alpha);
+            else
+            {
+                // Null window scout
+                score = -Search(depth - 1, 1, -alpha - 1, -alpha);
+                // Re-search with full window if it beat alpha unexpectedly
+                if (score > alpha)
+                {
+                    _pvsResearches++;
+                    score = -Search(depth - 1, 1, -beta, -alpha);
+                }
+            }
+
+            _repetitionTable.TryPop();
+            _board.UnmakeMove(moves[i]);
+
+            if (score > alpha)
+            {
+                alpha = score;
+                // Only commit if search wasn't aborted mid-move
+                if (!_abortSearch)  
+                {
+                    _bestScore = score;
+                    _bestMove  = moves[i];
+                }
+            }
+        }
+        
+        return _bestScore;
+    }
     
     private int Search(int depth, int ply, int alpha, int beta)
     {
+        _positionsEvaluated++;
+        
         if (_abortSearch)
             return 0;
         
         if (_board.Drawn || _repetitionTable.Contains(_board.ZobristKey))
             return 0;
 
+        // Mate distance pruning
+        alpha = Math.Max(alpha, -MateScore + ply);
+        beta  = Math.Min(beta,   MateScore - ply);
+        
+        // If the window has collapsed, no point searching more
+        if (alpha >= beta) return alpha;
+
+        
         if (depth == 0)
             return SearchCapturesOnly(alpha, beta);
         
         int? ttScore = _tt.TryGetScore(_board.ZobristKey, depth, ply, alpha, beta);
-        if (ttScore.HasValue)
+        if (ttScore.HasValue) 
             return ttScore.Value;
 
         Span<Move> moves = stackalloc Move[MoveGenerator.MaxMoves];
@@ -108,12 +192,26 @@ public class Searcher
             _board.MakeMove(move);
             _repetitionTable.Push(_board.ZobristKey);
 
-            int score = -Search(depth - 1, ply + 1, -beta, -alpha);
+            int score;
+            if (i == 0) 
+                score = -Search(depth - 1, ply + 1, -beta, -alpha);
+            else
+            {
+                // Null window scout
+                score = -Search(depth - 1, ply + 1, -alpha - 1, -alpha);
+                // Re-search with full window if it beat alpha unexpectedly
+                if (score > alpha && score < beta)
+                {
+                    _pvsResearches++;
+                    score = -Search(depth - 1, ply + 1, -beta, -alpha);
+                }
+            }
 
             _repetitionTable.TryPop();
             _board.UnmakeMove(move);
             if (score >= beta)
             {
+                _ttStores++;
                 _tt.Store(_board.ZobristKey, score, depth, ply, move, TranspositionTable.Lowerbound); 
                 return beta;
             }
@@ -125,6 +223,7 @@ public class Searcher
             }
         }
         
+        _ttStores++;
         int flag = alpha > originalAlpha ? TranspositionTable.Exact : TranspositionTable.Upperbound;
         _tt.Store(_board.ZobristKey, alpha, depth, ply, bestMove, flag);
         return alpha;
@@ -163,4 +262,8 @@ public class Searcher
 
         return alpha;
     }
+    
+    private bool IsMate(int score) => Math.Abs(score) >= MateScore - 500;
+
+    private int MovesToMate(int score) => (MateScore - Math.Abs(score) + 1) / 2;
 }
