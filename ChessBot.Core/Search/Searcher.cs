@@ -8,6 +8,7 @@ using static MoveOrderer;
 
 public class Searcher
 {
+    private const int MaxExtensions = 16;
     private const int Infinity = 30000;
     private const int MateScore = 29000;
 
@@ -166,7 +167,6 @@ public class Searcher
         
         // If the window has collapsed, no point searching more
         if (alpha >= beta) return alpha;
-
         
         if (depth == 0)
             return SearchCapturesOnly(alpha, beta);
@@ -184,6 +184,8 @@ public class Searcher
         Move ttMove = _tt.GetBestMove(_board.ZobristKey);
         OrderMoves(moves[..moveCount], _board, ttMove);
         
+        bool inCheck = _generator.IsInCheck(); // Used for extension
+        
         int originalAlpha = alpha;
         Move bestMove = default;
         for (int i = 0; i < moveCount; i++)
@@ -192,18 +194,20 @@ public class Searcher
             _board.MakeMove(move);
             _repetitionTable.Push(_board.ZobristKey);
 
+            int extension = inCheck ? 1 : 0;
+            
             int score;
             if (i == 0) 
-                score = -Search(depth - 1, ply + 1, -beta, -alpha);
+                score = -Search(depth + extension - 1, ply + 1, -beta, -alpha);
             else
             {
                 // Null window scout
-                score = -Search(depth - 1, ply + 1, -alpha - 1, -alpha);
+                score = -Search(depth + extension - 1, ply + 1, -alpha - 1, -alpha);
                 // Re-search with full window if it beat alpha unexpectedly
                 if (score > alpha && score < beta)
                 {
                     _pvsResearches++;
-                    score = -Search(depth - 1, ply + 1, -beta, -alpha);
+                    score = -Search(depth + extension - 1, ply + 1, -beta, -alpha);
                 }
             }
 
