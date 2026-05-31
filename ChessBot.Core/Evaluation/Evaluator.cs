@@ -9,11 +9,11 @@ namespace ChessBot.Core.Evaluation;
 public class Evaluator
 {
     // Bonuses by rank for passed pawns
-    private static readonly int[] PassedPawnBonus = { 0, 10, 15, 25, 40, 60, 85, 0 };
+    private static readonly int[] PassedPawnBonus = { 0, 15, 15, 25, 40, 60, 90, 0 };
 
     // Penalties
-    private const int DoubledPawnPenalty  = -20;
-    private const int IsolatedPawnPenalty = -15;
+    private const int DoubledPawnPenalty  = -10;
+    private const int IsolatedPawnPenalty = -8;
     
     // Cache for PST getter methods to avoid reflection and enable dispatch
     private static readonly PstGetter[] MgGetters = new PstGetter[]
