@@ -47,7 +47,7 @@ public struct Move : IEquatable<Move>
     {
         return HashCode.Combine(From, To, Promotion);
     }
-    
+
     public static bool operator ==(Move left, Move right) => left.Equals(right);
     public static bool operator !=(Move left, Move right) => !left.Equals(right);
 }

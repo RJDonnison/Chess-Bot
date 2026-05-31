@@ -25,12 +25,61 @@ public static class Masks
 
     public static readonly ulong[,] Between = new ulong[64, 64];
 
+    public static readonly ulong[] AdjacentFiles = new ulong[64];
+    public static readonly ulong[,] PassedPawnMask = new ulong[2, 64];
+    public static readonly ulong[] IsolatedPawnMask = new ulong[8];
+
     static Masks()
     {
         InitBetween();
+        InitPawnMasks();
     }
 
-    public static void InitBetween()
+
+    private static void InitPawnMasks()
+    {
+        for (int sq = 0; sq < 64; sq++)
+        {
+            int file = sq % 8;
+            int rank = sq / 8;
+
+            // Adjacent files mask
+            ulong adjFiles = FileMask[file];
+            if (file > 0) adjFiles |= FileMask[file - 1];
+            if (file < 7) adjFiles |= FileMask[file + 1];
+
+            AdjacentFiles[sq] = adjFiles;
+
+            // Isolated pawn mask 
+            ulong isolatedMask = 0;
+            if (file > 0) isolatedMask |= FileMask[file - 1];
+            if (file < 7) isolatedMask |= FileMask[file + 1];
+            IsolatedPawnMask[file] = isolatedMask;
+
+            // Passed pawn mask 
+            ulong whiteMask = 0;
+            ulong blackMask = 0;
+
+            for (int r = rank + 1; r <= 7; r++)
+            {
+                if (file > 0) whiteMask |= 1UL << (r * 8 + file - 1);
+                whiteMask |= 1UL << (r * 8 + file);
+                if (file < 7) whiteMask |= 1UL << (r * 8 + file + 1);
+            }
+
+            for (int r = rank - 1; r >= 0; r--)
+            {
+                if (file > 0) blackMask |= 1UL << (r * 8 + file - 1);
+                blackMask |= 1UL << (r * 8 + file);
+                if (file < 7) blackMask |= 1UL << (r * 8 + file + 1);
+            }
+
+            PassedPawnMask[0, sq] = whiteMask;
+            PassedPawnMask[1, sq] = blackMask;
+        }
+    }
+
+    private static void InitBetween()
     {
         int[][] directions = { [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1] };
 

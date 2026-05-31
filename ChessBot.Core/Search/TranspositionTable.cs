@@ -10,21 +10,21 @@ public class TranspositionTable
     public const int Lowerbound = 1;
     public const int Upperbound = 2;
     private const int MateScoreThreshold = 28000;
-    
+
     private readonly Entry[] _entries;
     private readonly ulong _mask;
 
     public TranspositionTable(int sizeMb = 64)
     {
-        int entrySize = Unsafe.SizeOf<Entry>(); 
+        int entrySize = Unsafe.SizeOf<Entry>();
         int capacity = 1 << (int)Math.Log2(sizeMb * 1024 * 1024 / entrySize);
         _mask = (ulong)(capacity - 1);
-        
+
         _entries = new Entry[capacity];
-    } 
-    
+    }
+
     private int Index(ulong key) => (int)(key & _mask);
-    
+
     public void Store(ulong key, int score, int depth, int ply, Move bestMove, int flag)
     {
         score = NormalizeMateScoreForStorage(score, ply);
@@ -36,7 +36,7 @@ public class TranspositionTable
         Entry entry = _entries[Index(key)];
         return entry.Key == key ? entry.BestMove : default;
     }
-    
+
     public int? TryGetScore(ulong key, int depth, int ply, int alpha, int beta)
     {
         Entry entry = _entries[Index(key)];
@@ -54,7 +54,7 @@ public class TranspositionTable
 
         return null; // Bounds didn't cause a cutoff
     }
-    
+
     public struct Entry
     {
         public readonly ulong Key;

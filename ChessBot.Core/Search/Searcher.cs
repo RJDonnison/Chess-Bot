@@ -16,12 +16,12 @@ public class Searcher
     private int _positionsEvaluated;
     private int _ttStores;
     private int _pvsResearches;
-    
+
     private Board _board = null!;
     private Move _bestMove;
     private int _bestScore;
     private bool _abortSearch;
-    
+
     private readonly MoveGenerator _generator = new();
     private readonly RepetitionTable _repetitionTable = new();
     private readonly TranspositionTable _tt = new();
@@ -32,9 +32,9 @@ public class Searcher
         _abortSearch = false;
         _bestMove = default;
         _bestScore = -Infinity;
-        
+
         int previousScore = 0;
-        
+
         for (int depth = 1; depth <= 100; depth++)
         {
             _positionsEvaluated = 0;
@@ -52,9 +52,9 @@ public class Searcher
                 while (true)
                 {
                     if (_abortSearch) break;
-                    
+
                     int score = SearchRoot(depth, alpha, beta);
-                    
+
                     if (score <= alpha)
                     {
                         alpha -= delta;
@@ -62,7 +62,7 @@ public class Searcher
                     }
                     else if (score >= beta)
                     {
-                        beta  += delta;
+                        beta += delta;
                         delta *= 2;
                     }
                     else break;
@@ -99,7 +99,7 @@ public class Searcher
     {
         _abortSearch = true;
     }
-    
+
     public Move GetFoundMove()
     {
         Console.WriteLine($"Search complete | Best: {_bestMove} | Score: {_bestScore}");
@@ -110,16 +110,16 @@ public class Searcher
     {
         Span<Move> moves = _generator.GenerateMoves(_board);
         OrderMoves(moves, _board, _bestMove);
-        
+
         for (int i = 0; i < moves.Length; i++)
         {
             if (_abortSearch) break;
 
             _board.MakeMove(moves[i]);
             _repetitionTable.Push(_board.ZobristKey);
-                
+
             int score;
-            if (i == 0) 
+            if (i == 0)
                 score = -Search(depth - 1, 1, -beta, -alpha);
             else
             {
@@ -140,39 +140,39 @@ public class Searcher
             {
                 alpha = score;
                 // Only commit if search wasn't aborted mid-move
-                if (!_abortSearch)  
+                if (!_abortSearch)
                 {
                     _bestScore = score;
-                    _bestMove  = moves[i];
+                    _bestMove = moves[i];
                 }
             }
         }
-        
+
         return _bestScore;
     }
-    
+
     private int Search(int depth, int ply, int alpha, int beta)
     {
         _positionsEvaluated++;
-        
+
         if (_abortSearch)
             return 0;
-        
+
         if (_board.Drawn || _repetitionTable.Contains(_board.ZobristKey))
             return 0;
 
         // Mate distance pruning
         alpha = Math.Max(alpha, -MateScore + ply);
-        beta  = Math.Min(beta,   MateScore - ply);
-        
+        beta = Math.Min(beta, MateScore - ply);
+
         // If the window has collapsed, no point searching more
         if (alpha >= beta) return alpha;
-        
+
         if (depth == 0)
             return SearchCapturesOnly(alpha, beta);
-        
+
         int? ttScore = _tt.TryGetScore(_board.ZobristKey, depth, ply, alpha, beta);
-        if (ttScore.HasValue) 
+        if (ttScore.HasValue)
             return ttScore.Value;
 
         Span<Move> moves = stackalloc Move[MoveGenerator.MaxMoves];
@@ -183,9 +183,9 @@ public class Searcher
 
         Move ttMove = _tt.GetBestMove(_board.ZobristKey);
         OrderMoves(moves[..moveCount], _board, ttMove);
-        
+
         bool inCheck = _generator.IsInCheck(); // Used for extension
-        
+
         int originalAlpha = alpha;
         Move bestMove = default;
         for (int i = 0; i < moveCount; i++)
@@ -195,9 +195,9 @@ public class Searcher
             _repetitionTable.Push(_board.ZobristKey);
 
             int extension = inCheck ? 1 : 0;
-            
+
             int score;
-            if (i == 0) 
+            if (i == 0)
                 score = -Search(depth + extension - 1, ply + 1, -beta, -alpha);
             else
             {
@@ -216,7 +216,7 @@ public class Searcher
             if (score >= beta)
             {
                 _ttStores++;
-                _tt.Store(_board.ZobristKey, score, depth, ply, move, TranspositionTable.Lowerbound); 
+                _tt.Store(_board.ZobristKey, score, depth, ply, move, TranspositionTable.Lowerbound);
                 return beta;
             }
 
@@ -226,7 +226,7 @@ public class Searcher
                 bestMove = move;
             }
         }
-        
+
         _ttStores++;
         int flag = alpha > originalAlpha ? TranspositionTable.Exact : TranspositionTable.Upperbound;
         _tt.Store(_board.ZobristKey, alpha, depth, ply, bestMove, flag);
@@ -237,7 +237,7 @@ public class Searcher
     {
         if (_abortSearch)
             return 0;
-        
+
         int evaluation = Evaluator.Evaluate(_board);
         if (evaluation >= beta)
             return beta;
@@ -246,9 +246,9 @@ public class Searcher
         Span<Move> moves = stackalloc Move[MoveGenerator.MaxMoves];
 
         int moveCount = _generator.GenerateMoves(_board, ref moves, true);
-        
+
         OrderMoves(moves[..moveCount], _board);
-        
+
         for (int i = 0; i < moveCount; i++)
         {
             var move = moves[i];
@@ -266,7 +266,7 @@ public class Searcher
 
         return alpha;
     }
-    
+
     private bool IsMate(int score) => Math.Abs(score) >= MateScore - 500;
 
     private int MovesToMate(int score) => (MateScore - Math.Abs(score) + 1) / 2;

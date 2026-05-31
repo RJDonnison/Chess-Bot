@@ -32,7 +32,7 @@ public static class MoveOrderer
                 scores[i] = -10_000_000;  // Negative because scores.Sort sorts ascending
                 continue;
             }
-            
+
             if (captured != null)
                 score += 10 * PieceValues[(int)captured] - PieceValues[(int)movePiece];
 

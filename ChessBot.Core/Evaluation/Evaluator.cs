@@ -8,6 +8,13 @@ namespace ChessBot.Core.Evaluation;
 
 public class Evaluator
 {
+    // Bonuses by rank for passed pawns
+    private static readonly int[] PassedPawnBonus = { 0, 10, 15, 25, 40, 60, 85, 0 };
+
+    // Penalties
+    private const int DoubledPawnPenalty  = -20;
+    private const int IsolatedPawnPenalty = -15;
+    
     // Cache for PST getter methods to avoid reflection and enable dispatch
     private static readonly PstGetter[] MgGetters = new PstGetter[]
     {
@@ -38,26 +45,63 @@ public class Evaluator
         int mgScore = 0;
         int egScore = 0;
 
-        // Evaluate white pieces
         mgScore += EvaluateSideMg(board, Color.White);
         egScore += EvaluateSideEg(board, Color.White);
-
-        // Evaluate black pieces (subtract from score)
         mgScore -= EvaluateSideMg(board, Color.Black);
         egScore -= EvaluateSideEg(board, Color.Black);
 
         // Interpolate between middlegame and endgame scores
         int interpolatedScore = (mgScore * (24 - gamePhase) + egScore * gamePhase) / 24;
+        
+        int pawnScore = 0;
+        pawnScore += EvaluatePawnStructure(board, Color.White);
+        pawnScore -= EvaluatePawnStructure(board, Color.Black);
+        interpolatedScore += pawnScore;
 
         if (gamePhase > 18 && interpolatedScore > 300)
         {
             int friendlyKingSq = BitOperations.TrailingZeroCount(board.Bitboards[board.ToMove, (int)Piece.King]);
             int enemyKingSq = BitOperations.TrailingZeroCount(board.Bitboards[board.ToMove ^ 1, (int)Piece.King]);
-        
+
             interpolatedScore += ForceKingToCorner(friendlyKingSq, enemyKingSq, gamePhase);
         }
 
         return board.ToMove == (int)Color.White ? interpolatedScore : -interpolatedScore;
+    }
+
+    private static int EvaluatePawnStructure(Board board, Color color)
+    {
+        int bonus = 0;
+        ulong enemyPawns = board.Bitboards[(int)color ^ 1, (int)Piece.Pawn];
+        ulong pawns = board.Bitboards[(int)color, (int)Piece.Pawn];
+        
+        while (pawns != 0)
+        {
+            int sq = BitOperations.TrailingZeroCount(pawns);
+            int file = sq % 8;
+            int rank = sq / 8;
+            
+            // Passed pawn 
+            ulong passedMask = Masks.PassedPawnMask[(int)color, sq];
+            if ((enemyPawns & passedMask) == 0)
+            {
+                int advancedRank = color == Color.White ? rank : 7 - rank;
+                bonus += PassedPawnBonus[advancedRank];
+            }
+
+            // Doubled pawn 
+            ulong fileMask = Masks.FileMask[file];
+            if (BitOperations.PopCount(pawns & fileMask) > 1)
+                bonus += DoubledPawnPenalty / 2; // Penalty applied to both pawns
+
+            // Isolated pawn 
+            if ((pawns & Masks.IsolatedPawnMask[file]) == 0)
+                bonus += IsolatedPawnPenalty;
+
+            pawns &= pawns - 1;
+        }
+
+        return bonus;
     }
 
     private static int EvaluateSideMg(Board board, Color color)
