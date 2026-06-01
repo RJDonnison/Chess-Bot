@@ -1,25 +1,22 @@
 using ChessBot.Core;
+using ChessBot.Core.MoveGen;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ChessBot.Api.Controllers;
 
 [ApiController]
 [Route("/")]
-public class ChessBotController : ControllerBase
+public class ChessBotController(Bot bot) : ControllerBase
 {
-    private readonly Bot _bot = new();
+    private readonly Bot _bot = bot;
 
     [HttpGet("/bestmove")]
-    public async Task<IActionResult> BestMove(string fen)
+    public async Task<IActionResult> BestMove(string fen, int? time)
     {
-        var move = await Task.Run(() => _bot.GetBestMove(fen));
-        return Ok(new { bestmove = move });
-    }
-
-    [HttpGet("/bestmove")]
-    public async Task<IActionResult> BestMove(string fen, int time)
-    {
-        var move = await Task.Run(() => _bot.GetBestMove(fen, time));
+        var move = time == null
+            ? await Task.Run(() => _bot.GetBestMove(fen))
+            : await Task.Run(() => _bot.GetBestMove(fen, time.Value));
+        
         return Ok(new { bestmove = move });
     }
 

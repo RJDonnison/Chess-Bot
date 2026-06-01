@@ -1,3 +1,5 @@
+using ChessBot.Core;
+
 namespace ChessBot.Api;
 
 public class Program
@@ -35,7 +37,6 @@ public class Program
 
     private static void RegisterServices(IServiceCollection services)
     {
-        // Register your services here
-        // services.AddScoped<IMyService, MyService>();
+        services.AddScoped<Bot>();
     }
 }

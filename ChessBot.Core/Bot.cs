@@ -32,7 +32,7 @@ public class Bot
     {
         Board board = Fen.GetBoard(fen);
 
-        string pos = fen.Substring(0, fen.Length - 4);
+        string pos = string.Join(" ", fen.Split(' ').Take(4));
         if (board.HalfMoveClock <= 10 && OpeningBook.BookContains(pos))
             return OpeningBook.GetMove(pos).ToString();
 
