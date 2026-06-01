@@ -19,20 +19,6 @@ public class ChessBotController : ControllerBase
     [HttpGet("/debug")]
     public IActionResult Debug(string? sq, string fen)
     {
-        // int sqInt = 0;
-        // if (sq != null)
-        // {
-        //     int file = sq[0] - 'a';
-        //     int rank = sq[1] - '1';
-        //     sqInt = rank * 8 + file;
-        // }
-        //
-        // Board board = Fen.GetBoard(fen);
-        // if (sq == null)
-        //     MoveGenerator.GenerateMoves(board);
-        // else
-        //     BitboardVisualizer.Bitboard = MagicBitboards.GetRookMoves(sqInt, board.Occupied) & ~board.FriendlyPieces;
-
         return Ok();
     }
 }
