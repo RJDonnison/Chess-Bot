@@ -16,6 +16,14 @@ public class ChessBotController : ControllerBase
         return Ok(new { bestmove = move });
     }
 
+    [HttpGet("/bestmove")]
+    public async Task<IActionResult> BestMove(string fen, int time)
+    {
+        var move = await Task.Run(() => _bot.GetBestMove(fen, time));
+        return Ok(new { bestmove = move });
+    }
+
+
     [HttpGet("/debug")]
     public IActionResult Debug(string? sq, string fen)
     {
