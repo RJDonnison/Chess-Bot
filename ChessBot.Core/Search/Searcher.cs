@@ -67,7 +67,11 @@ public class Searcher
 
             // Stop if we've found a mate or search stopped
             if (_abortSearch)
+            {
+                Console.WriteLine("Search aborted at depth: " + depth);
                 break;
+            }
+
             if (Math.Abs(_bestScore) >= MateScore - 500)
                 break;
         }
