@@ -1,5 +1,4 @@
 using ChessBot.Core;
-using ChessBot.Core.MoveGen;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ChessBot.Api.Controllers;
@@ -16,7 +15,7 @@ public class ChessBotController(Bot bot) : ControllerBase
         var move = time == null
             ? await Task.Run(() => _bot.GetBestMove(fen))
             : await Task.Run(() => _bot.GetBestMove(fen, time.Value));
-        
+
         return Ok(new { bestmove = move });
     }
 

@@ -187,7 +187,7 @@ public class Evaluator
 
         return score;
     }
-    
+
     // 0 = opening, 24 = endgame
     private static int CalculateGamePhase(Board board)
     {

@@ -1,5 +1,4 @@
 using ChessBot.Core.Core;
-using ChessBot.Core.MoveGen;
 using ChessBot.Core.Search;
 using ChessBot.Core.Utilities;
 
@@ -18,8 +17,8 @@ public class Bot
         if (board.HalfMoveClock <= 10 && OpeningBook.BookContains(pos))
             return OpeningBook.GetMove(pos).ToString();
 
-        Console.WriteLine("Searching for: " + ThinkTimeMs + "ms"); 
-            
+        Console.WriteLine("Searching for: " + ThinkTimeMs + "ms");
+
         Thread searchThread = new(() => _searcher.StartSearch(board)) { IsBackground = true };
         searchThread.Start();
         Thread.Sleep(ThinkTimeMs);
@@ -32,6 +31,8 @@ public class Bot
 
     public string GetBestMove(string fen, int remainingTimeMs)
     {
+        Console.WriteLine( remainingTimeMs + "ms");
+        
         Board board = Fen.GetBoard(fen);
 
         string pos = string.Join(" ", fen.Split(' ').Take(4));
@@ -43,7 +44,7 @@ public class Bot
 
         // Clamp between 100ms minimum and 5s maximum
         thinkTimeMs = Math.Clamp(thinkTimeMs, 100, 5000);
-        
+
         Console.WriteLine("Searching for: " + thinkTimeMs + "ms");
 
         Thread searchThread = new(() => _searcher.StartSearch(board)) { IsBackground = true };

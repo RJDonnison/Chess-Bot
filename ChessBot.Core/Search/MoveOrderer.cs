@@ -28,7 +28,7 @@ public static class MoveOrderer
 
             if (moves[i].IsEnPassant)
                 captured = Piece.Pawn;
-            
+
             // TT move goes first, above everything else
             if (moves[i] == ttMove)
             {
