@@ -18,6 +18,8 @@ public class Bot
         if (board.HalfMoveClock <= 10 && OpeningBook.BookContains(pos))
             return OpeningBook.GetMove(pos).ToString();
 
+        Console.WriteLine("Searching for:" + ThinkTimeMs + "ms"); 
+            
         Thread searchThread = new(() => _searcher.StartSearch(board)) { IsBackground = true };
         searchThread.Start();
         Thread.Sleep(ThinkTimeMs);
@@ -41,6 +43,8 @@ public class Bot
 
         // Clamp between 100ms minimum and 5s maximum
         thinkTimeMs = Math.Clamp(thinkTimeMs, 100, 5000);
+        
+        Console.WriteLine("Searching for:" + thinkTimeMs + "ms");
 
         Thread searchThread = new(() => _searcher.StartSearch(board)) { IsBackground = true };
         searchThread.Start();
