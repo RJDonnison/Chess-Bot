@@ -31,8 +31,6 @@ public class Bot
 
     public string GetBestMove(string fen, int remainingTimeMs)
     {
-        Console.WriteLine( remainingTimeMs + "ms");
-        
         Board board = Fen.GetBoard(fen);
 
         string pos = string.Join(" ", fen.Split(' ').Take(4));
